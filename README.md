@@ -15,7 +15,7 @@ Windows 10 или 11
 Python 3.12
 Около 1 ГБ свободного места для зависимостей (PySide6, OCR-модели)
 Установка
-git clone <адрес репозитория> autoutil
+git clone https://github.com/h1ilep0pysk-hue/AutoUtil 
 cd autoutil
 py -3.12 -m venv .venv
 .venv\Scripts\activate
