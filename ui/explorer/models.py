@@ -1,7 +1,6 @@
 from PySide6.QtCore import QAbstractListModel, QModelIndex, Qt
 
 from core.journal import JournalEntry
-from modules.grabber.history import Capture
 from modules.organizer.rules import Rule
 
 
@@ -20,19 +19,6 @@ class _BaseModel(QAbstractListModel):
 
     def rowCount(self, parent=QModelIndex()) -> int:
         return 0 if parent.isValid() else len(self._items)
-
-
-class CaptureModel(_BaseModel):
-    def data(self, index, role=Qt.ItemDataRole.DisplayRole):
-        if not index.isValid():
-            return None
-        c: Capture = self._items[index.row()]
-        if role == Qt.ItemDataRole.DisplayRole:
-            text = c.text.replace("\n", " ")
-            return text if len(text) <= 90 else text[:87] + "..."
-        if role == Qt.ItemDataRole.ToolTipRole:
-            return f"{c.timestamp[:19]}\n\n{c.text}"
-        return None
 
 
 class JournalModel(_BaseModel):

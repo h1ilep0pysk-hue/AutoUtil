@@ -7,7 +7,7 @@ import exifread
 from PIL import Image
 from pypdf import PdfReader
 
-from modules.grabber.ocr import recognize
+from modules.organizer.ocr import recognize
 
 IMAGE_EXT = {".png", ".jpg", ".jpeg", ".heic"}
 MAX_TEXT = 2000

@@ -1,11 +1,8 @@
-from PySide6.QtWidgets import (
-    QCheckBox, QLabel, QLineEdit, QVBoxLayout, QWizard, QWizardPage,
-)
+from PySide6.QtWidgets import QCheckBox, QLabel, QLineEdit, QVBoxLayout, QWizard, QWizardPage
 
 from core.config import AppSettings
 from win.autostart import set_autostart
 from win.paths import downloads_dir
-from win.hotkeys import parse_hotkey
 
 
 class FolderPage(QWizardPage):
@@ -24,31 +21,11 @@ class FolderPage(QWizardPage):
         return bool(self.edit.text().strip())
 
 
-class HotkeyPage(QWizardPage):
-    def __init__(self, settings: AppSettings) -> None:
-        super().__init__()
-        self.setTitle("Горячая клавиша захвата текста")
-        self.setSubTitle("Например: ctrl+shift+o")
-        self.edit = QLineEdit(settings.grabber.hotkey)
-        layout = QVBoxLayout(self)
-        layout.addWidget(self.edit)
-        self.settings = settings
-
-    def validatePage(self) -> bool:
-        spec = self.edit.text().strip().lower()
-        try:
-            parse_hotkey(spec)
-        except ValueError:
-            return False
-        self.settings.grabber.hotkey = spec
-        return True
-
-
 class OptionsPage(QWizardPage):
     def __init__(self, settings: AppSettings) -> None:
         super().__init__()
         self.setTitle("Настройки")
-        self.dry = QCheckBox("Первые 7 дней только показывать план, без переносов (рекомендуется)")
+        self.dry = QCheckBox("Сначала только показывать план, без переносов (рекомендуется)")
         self.dry.setChecked(True)
         self.auto = QCheckBox("Запускать вместе с Windows")
         self.auto.setChecked(True)
@@ -69,7 +46,6 @@ class SetupWizard(QWizard):
         self.setWindowTitle("AutoUtil: первый запуск")
         self.settings = settings
         self.addPage(FolderPage(settings))
-        self.addPage(HotkeyPage(settings))
         self.addPage(OptionsPage(settings))
 
     def accept(self) -> None:

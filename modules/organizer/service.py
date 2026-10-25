@@ -2,12 +2,13 @@ import logging
 from pathlib import Path
 
 from core.config import OrganizerSettings
-from core.events import FileMoved, PlanReady, bus
+from core.events import FileMoved, PendingAdded, PlanReady, bus
 from core.journal import Journal
 from core.notifier import Notice, Notifier
+from core.pending import PendingStore
 from core.state import state
 from modules.organizer.actions import apply_move, prepare_target
-from modules.organizer.analyzer import analyze, sha256_full
+from modules.organizer.analyzer import analyze
 from modules.organizer.dedupe import find_duplicate
 from modules.organizer.exclusions import is_excluded
 from modules.organizer.learning import Learned
@@ -25,6 +26,7 @@ class OrganizerService:
         self.journal = journal
         self.notifier = notifier
         self.learned = Learned()
+        self.pending = PendingStore()
         self.base = documents_dir().parent
         self.watcher: FolderWatcher | None = None
 
@@ -35,6 +37,12 @@ class OrganizerService:
     def stop(self) -> None:
         if self.watcher:
             self.watcher.stop()
+            self.watcher = None
+
+    def restart(self) -> None:
+        self.stop()
+        if self.settings.watch_dirs:
+            self.start()
 
     def handle(self, path: Path) -> None:
         try:
@@ -60,6 +68,15 @@ class OrganizerService:
         if move is None:
             return
         bus.publish(PlanReady(src=str(move.src), dst=str(move.dst), rule=move.rule))
+
+        if move.ask:
+            self.pending.add(str(move.src), str(move.dst), move.rule)
+            bus.publish(PendingAdded(src=str(move.src), rule=move.rule))
+            self.notifier.notify(Notice(
+                title="Нужно решение",
+                body=f"{move.src.name}: откройте раздел «Спросить» в AutoUtil.",
+            ))
+            return
 
         if self.settings.dry_run:
             self.notifier.notify(Notice(

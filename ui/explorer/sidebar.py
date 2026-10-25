@@ -2,8 +2,10 @@ from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QListWidget, QListWidgetItem
 
 SECTIONS = [
-    ("Захваты", "captures"),
+    ("Схема", "schema"),
+    ("Спросить", "pending"),
     ("Журнал", "journal"),
+    ("Отчёт", "report"),
     ("Правила", "rules"),
     ("Настройки", "settings"),
 ]
