@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout, QWidget,
 )
 
+from core.i18n import t
 from core import report
 from core.journal import Journal
 
@@ -104,40 +105,41 @@ def _cell(text: str, align: Qt.AlignmentFlag, color: QColor = TEXT) -> QTableWid
     return item
 
 
-def _table(head: str, counter, empty_text: str = "Нет данных") -> QTableWidget:
+def _table(head: str, counter, empty_text: str | None = None) -> QTableWidget:
+    empty_text = empty_text or t("Нет данных")
     rows = counter.most_common()
     total = sum(counter.values()) or 1
-    t = QTableWidget(max(len(rows), 1), 3)
-    t.setHorizontalHeaderLabels([head, "Файлов", "Доля"])
+    table = QTableWidget(max(len(rows), 1), 3)
+    table.setHorizontalHeaderLabels([head, t("Файлов"), t("Доля")])
     aligns = [Qt.AlignmentFlag.AlignLeft, Qt.AlignmentFlag.AlignRight, Qt.AlignmentFlag.AlignRight]
     for c, align in enumerate(aligns):
-        hi = t.horizontalHeaderItem(c)
+        hi = table.horizontalHeaderItem(c)
         hi.setTextAlignment(align | Qt.AlignmentFlag.AlignVCenter)
-    header = t.horizontalHeader()
+    header = table.horizontalHeader()
     header.setFixedHeight(HEAD_H)
     header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
     header.setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
     header.setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
-    t.setColumnWidth(1, NUM_W)
-    t.setColumnWidth(2, PCT_W)
-    t.verticalHeader().setVisible(False)
-    t.verticalHeader().setDefaultSectionSize(ROW_H)
-    t.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-    t.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
-    t.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-    t.setShowGrid(False)
-    t.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-    t.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+    table.setColumnWidth(1, NUM_W)
+    table.setColumnWidth(2, PCT_W)
+    table.verticalHeader().setVisible(False)
+    table.verticalHeader().setDefaultSectionSize(ROW_H)
+    table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+    table.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
+    table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+    table.setShowGrid(False)
+    table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+    table.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
     if not rows:
-        t.setItem(0, 0, _cell(empty_text, Qt.AlignmentFlag.AlignLeft, MUTED))
-        t.setSpan(0, 0, 1, 3)
+        table.setItem(0, 0, _cell(empty_text, Qt.AlignmentFlag.AlignLeft, MUTED))
+        table.setSpan(0, 0, 1, 3)
     for r, (name, count) in enumerate(rows):
-        t.setItem(r, 0, _cell(str(name), Qt.AlignmentFlag.AlignLeft))
-        t.setItem(r, 1, _cell(str(count), Qt.AlignmentFlag.AlignRight))
+        table.setItem(r, 0, _cell(str(name), Qt.AlignmentFlag.AlignLeft))
+        table.setItem(r, 1, _cell(str(count), Qt.AlignmentFlag.AlignRight))
         pct = f"{count * 100 / total:.0f}%"
-        t.setItem(r, 2, _cell(pct, Qt.AlignmentFlag.AlignRight, MUTED))
-    t.setFixedHeight(HEAD_H + ROW_H * max(len(rows), 1) + 4)
-    return t
+        table.setItem(r, 2, _cell(pct, Qt.AlignmentFlag.AlignRight, MUTED))
+    table.setFixedHeight(HEAD_H + ROW_H * max(len(rows), 1) + 4)
+    return table
 
 
 class ReportPage(QWidget):
@@ -147,28 +149,28 @@ class ReportPage(QWidget):
         self.journal = journal
         self._md = ""
 
-        title = QLabel("Отчёт")
+        title = QLabel(t("Отчёт"))
         title.setProperty("role", "title")
-        sub = QLabel("Что программа перенесла, куда и по каким правилам за выбранный период.")
+        sub = QLabel(t("Что программа перенесла, куда и по каким правилам за выбранный период."))
         sub.setProperty("role", "muted")
         sub.setWordWrap(True)
 
         self.start = self._date_box(QDate.currentDate().addDays(-7))
         self.end = self._date_box(QDate.currentDate())
 
-        build_btn = QPushButton("Сформировать")
+        build_btn = QPushButton(t("Сформировать"))
         build_btn.setObjectName("Primary")
         build_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         build_btn.clicked.connect(self.reload)
-        export_btn = QPushButton("Экспорт .md")
+        export_btn = QPushButton(t("Экспорт .md"))
         export_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         export_btn.clicked.connect(self._export)
 
         bar = QHBoxLayout()
         bar.setSpacing(10)
-        bar.addWidget(QLabel("С"))
+        bar.addWidget(QLabel(t("С")))
         bar.addWidget(self.start)
-        bar.addWidget(QLabel("по"))
+        bar.addWidget(QLabel(t("по")))
         bar.addWidget(self.end)
         bar.addSpacing(8)
         bar.addWidget(build_btn)
@@ -223,36 +225,35 @@ class ReportPage(QWidget):
         self._clear()
         if s > e:
             self._md = ""
-            self._message("Начало периода позже конца. Поменяй даты.")
+            self._message(t("Начало периода позже конца. Поменяй даты."))
             return
         data = report.build(self.journal.read_all(), s, e)
         self._md = report.to_markdown(data, s, e)
         self._render(data, s, e)
 
     def _render(self, r: dict, start, end) -> None:
-        header = QLabel(f"Период: {start:%d.%m.%Y} — {end:%d.%m.%Y}")
+        header = QLabel(t("Период: {start:%d.%m.%Y} — {end:%d.%m.%Y}", start=start, end=end))
         header.setProperty("role", "muted")
         self.content_layout.addWidget(header)
         if r["moved"] == 0 and r["undone"] == 0:
-            self._message("За период ничего не перенесено. Выбери другой период "
-                          "или проверь, что схема запущена.")
+            self._message(t("За период ничего не перенесено. Выбери другой период или проверь, что схема запущена."))
             return
         cards = QHBoxLayout()
         cards.setSpacing(12)
         for value, label in [
-            (str(r["moved"]), "перенесено файлов"),
-            (f"{r['size_mb']:.1f} МБ", "общий размер"),
-            (str(r["undone"]), "возвращено откатом"),
-            (str(r["trashed"]), "убрано в корзину"),
+            (str(r["moved"]), t("перенесено файлов")),
+            (t("{size:.1f} МБ", size=r["size_mb"]), t("общий размер")),
+            (str(r["undone"]), t("возвращено откатом")),
+            (str(r["trashed"]), t("убрано в корзину")),
         ]:
             cards.addWidget(_card(value, label), 1)
         cards_wrap = QWidget()
         cards_wrap.setLayout(cards)
         self.content_layout.addWidget(cards_wrap)
         for title, counter, head in [
-            ("По правилам", r["by_rule"], "Правило"),
-            ("По папкам назначения", r["by_folder"], "Папка"),
-            ("По типам файлов", r["by_ext"], "Расширение"),
+            (t("По правилам"), r["by_rule"], t("Правило")),
+            (t("По папкам назначения"), r["by_folder"], t("Папка")),
+            (t("По типам файлов"), r["by_ext"], t("Расширение")),
         ]:
             self.content_layout.addWidget(_section_title(title))
             self.content_layout.addWidget(_table(head, counter))
@@ -261,7 +262,7 @@ class ReportPage(QWidget):
     def _export(self) -> None:
         if not self._md:
             return
-        path, _ = QFileDialog.getSaveFileName(self, "Экспорт отчёта", "autoutil-report.md",
+        path, _ = QFileDialog.getSaveFileName(self, t("Экспорт отчёта"), "autoutil-report.md",
                                               "Markdown (*.md)")
         if not path:
             return

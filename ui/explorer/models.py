@@ -1,5 +1,6 @@
 from PySide6.QtCore import QAbstractListModel, QModelIndex, Qt
 
+from core.i18n import t
 from core.journal import JournalEntry
 from modules.organizer.rules import Rule
 
@@ -27,10 +28,10 @@ class JournalModel(_BaseModel):
             return None
         e: JournalEntry = self._items[index.row()]
         if role == Qt.ItemDataRole.DisplayRole:
-            mark = "[возвращён] " if e.undone else ""
+            mark = t("[возвращён] ") if e.undone else ""
             return f"{mark}{e.timestamp[:19]}   {e.dst}"
         if role == Qt.ItemDataRole.ToolTipRole:
-            return f"Откуда: {e.src}\nКуда: {e.dst}\nПравило: {e.rule}"
+            return t("Откуда: {src}\nКуда: {dst}\nПравило: {rule}", src=e.src, dst=e.dst, rule=e.rule)
         return None
 
 

@@ -6,6 +6,7 @@ from PySide6.QtGui import QAction, QIcon
 from PySide6.QtWidgets import QApplication, QMenu, QStyle, QSystemTrayIcon
 
 from core.events import FileMoved, ModeChanged, PendingAdded, bus
+from core.i18n import t
 from core.state import Mode, state
 
 log = logging.getLogger("autoutil.tray")
@@ -19,11 +20,15 @@ MODE_ICONS = {
     "alert": "tray_alert.png",
 }
 
-MODE_TITLES = {
-    Mode.ACTIVE.value: "AutoUtil: работает",
-    Mode.PAUSED.value: "AutoUtil: пауза",
-    Mode.DND.value: "AutoUtil: не беспокоить",
+MODE_TITLE_KEYS = {
+    Mode.ACTIVE.value: "tray.active",
+    Mode.PAUSED.value: "tray.paused",
+    Mode.DND.value: "tray.dnd",
 }
+
+
+def _mode_title(mode: str) -> str:
+    return t(MODE_TITLE_KEYS.get(mode, "tray.active"))
 
 
 def _load_icon(key: str) -> QIcon:
@@ -53,40 +58,40 @@ class Tray:
         bus.subscribe(PendingAdded, lambda e: self._bridge.alert.emit())
 
         self.tray = QSystemTrayIcon(_load_icon(Mode.ACTIVE.value), parent=app)
-        self.tray.setToolTip(MODE_TITLES[Mode.ACTIVE.value])
+        self.tray.setToolTip(_mode_title(Mode.ACTIVE.value))
 
         self.menu = QMenu()
         self.menu.aboutToShow.connect(self._on_menu_open)
 
-        self.status_action = QAction(MODE_TITLES[Mode.ACTIVE.value])
+        self.status_action = QAction(_mode_title(Mode.ACTIVE.value))
         self.status_action.setEnabled(False)
         self.menu.addAction(self.status_action)
         self.menu.addSeparator()
 
-        self.pause_hour = QAction("Пауза на час")
+        self.pause_hour = QAction(t("tray.pause_hour"))
         self.pause_hour.triggered.connect(lambda: state.pause_for(hours=1))
         self.menu.addAction(self.pause_hour)
 
-        self.dnd = QAction("Не беспокоить")
+        self.dnd = QAction(t("tray.dnd_action"))
         self.dnd.setCheckable(True)
         self.dnd.triggered.connect(lambda checked: state.toggle_dnd(checked))
         self.menu.addAction(self.dnd)
 
         self.menu.addSeparator()
-        open_action = QAction("Открыть AutoUtil")
+        open_action = QAction(t("tray.open"))
         open_action.triggered.connect(lambda: self.open_window and self.open_window("schema"))
         self.menu.addAction(open_action)
 
-        journal_action = QAction("Журнал")
+        journal_action = QAction(t("tray.journal"))
         journal_action.triggered.connect(self._open_journal)
         self.menu.addAction(journal_action)
 
-        settings_action = QAction("Настройки")
+        settings_action = QAction(t("tray.settings"))
         settings_action.triggered.connect(self._open_settings)
         self.menu.addAction(settings_action)
 
         self.menu.addSeparator()
-        quit_action = QAction("Выход")
+        quit_action = QAction(t("tray.quit"))
         quit_action.triggered.connect(self.app.quit)
         self.menu.addAction(quit_action)
 
@@ -119,7 +124,7 @@ class Tray:
         self.tray.setIcon(_load_icon("alert"))
 
     def _apply_mode(self, mode: str) -> None:
-        title = MODE_TITLES.get(mode, MODE_TITLES[Mode.ACTIVE.value])
+        title = _mode_title(mode)
         if not self._alert_on:
             self.tray.setIcon(_load_icon(mode))
         self.tray.setToolTip(title)

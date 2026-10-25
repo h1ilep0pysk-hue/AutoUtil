@@ -1,14 +1,16 @@
+from core.i18n import t
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QListWidget, QListWidgetItem
 
-SECTIONS = [
-    ("Схема", "schema"),
-    ("Спросить", "pending"),
-    ("Журнал", "journal"),
-    ("Отчёт", "report"),
-    ("Правила", "rules"),
-    ("Настройки", "settings"),
-]
+def _sections():
+    return [
+        (t("Схема"), "schema"),
+        (t("Спросить"), "pending"),
+        (t("Журнал"), "journal"),
+        (t("Отчёт"), "report"),
+        (t("Правила"), "rules"),
+        (t("Настройки"), "settings"),
+    ]
 
 
 class Sidebar(QListWidget):
@@ -18,7 +20,7 @@ class Sidebar(QListWidget):
         super().__init__()
         self.setObjectName("Sidebar")
         self.setFixedWidth(200)
-        for title, key in SECTIONS:
+        for title, key in _sections():
             item = QListWidgetItem(title)
             item.setData(0x0100, key)
             self.addItem(item)

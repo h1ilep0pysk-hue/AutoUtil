@@ -5,6 +5,7 @@ from PySide6.QtWidgets import (
 )
 
 from core.config import AppSettings
+from core.i18n import t
 from core.journal import Journal
 from core.prefs import UiPrefs, load_prefs
 from ui.explorer.pages import JournalPage, RulesPage, SettingsPage
@@ -22,10 +23,7 @@ LOG_HINT = "%APPDATA%\\AutoUtil\\logs\\autoutil.log"
 def _failed_page(name: str, err: Exception) -> QWidget:
     log.exception("Не удалось создать раздел %s", name)
     page = QWidget()
-    lbl = QLabel(
-        f"Раздел «{name}» не загрузился.\n\n{type(err).__name__}: {err}\n\n"
-        f"Подробности в логе: {LOG_HINT}"
-    )
+    lbl = QLabel(t("failed.page", name=name, err=f"{type(err).__name__}: {err}", hint=LOG_HINT))
     lbl.setWordWrap(True)
     lay = QHBoxLayout(page)
     lay.setContentsMargins(24, 20, 24, 20)
@@ -53,10 +51,7 @@ class ExplorerWindow(QMainWindow):
             "rules": lambda: RulesPage(),
             "settings": lambda: SettingsPage(settings, prefs, self.apply_prefs),
         }
-        names = {
-            "schema": "Схема", "pending": "Спросить", "journal": "Журнал",
-            "report": "Отчёт", "rules": "Правила", "settings": "Настройки",
-        }
+        names = {key: t(f"section.{key}") for key in factories}
         self.pages: dict[str, QWidget] = {}
         for key, make in factories.items():
             try:
@@ -78,7 +73,7 @@ class ExplorerWindow(QMainWindow):
         layout.addWidget(self.sidebar)
         layout.addWidget(self.stack, 1)
         self.setCentralWidget(central)
-        self.statusBar().showMessage("Готово")
+        self.statusBar().showMessage(t("Готово"))
 
         section = prefs.default_section if prefs.default_section in self.pages else "schema"
         self.sidebar.select(section)
@@ -87,7 +82,7 @@ class ExplorerWindow(QMainWindow):
     def apply_prefs(self, prefs: UiPrefs) -> None:
         self.prefs = prefs
         apply_qss(QApplication.instance(), prefs)
-        self.statusBar().showMessage("Настройки сохранены")
+        self.statusBar().showMessage(t("Настройки сохранены"))
 
     def _switch(self, key: str) -> None:
         page = self.pages.get(key)
@@ -99,7 +94,7 @@ class ExplorerWindow(QMainWindow):
                 page.reload()
             except Exception:
                 log.exception("Ошибка при обновлении раздела %s", key)
-                self.statusBar().showMessage(f"Ошибка в разделе: см. лог {LOG_HINT}")
+                self.statusBar().showMessage(t("Ошибка в разделе: см. лог {hint}", hint=LOG_HINT))
         self.stack.setCurrentWidget(page)
 
     def show_section(self, key: str) -> None:
@@ -111,4 +106,4 @@ class ExplorerWindow(QMainWindow):
 
     def _on_schema_applied(self, rules, folders: list[str]) -> None:
         self.pages["rules"].reload()
-        self.statusBar().showMessage("Схема применена. Правила обновлены.")
+        self.statusBar().showMessage(t("Схема применена. Правила обновлены."))

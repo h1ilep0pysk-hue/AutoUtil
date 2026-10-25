@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout, QWidget,
 )
 
+from core.i18n import t
 from core.journal import Journal
 from core.pending import PendingStore
 from modules.organizer.actions import apply_move, prepare_target
@@ -23,17 +24,17 @@ class PendingPage(QWidget):
         self.base = documents_dir().parent
         self._suggestion: tuple[str, str] | None = None
 
-        title = QLabel("Спросить")
+        title = QLabel(t("Спросить"))
         title.setProperty("role", "title")
-        sub = QLabel("Файлы, которые правило не переносит само. Перенеси, пропусти или выбери папку.")
+        sub = QLabel(t("Файлы, которые правило не переносит само. Перенеси, пропусти или выбери папку."))
         sub.setProperty("role", "muted")
         sub.setWordWrap(True)
 
         self.suggest_label = QLabel("")
         self.suggest_label.setWordWrap(True)
-        self.accept_btn = QPushButton("Запомнить")
+        self.accept_btn = QPushButton(t("Запомнить"))
         self.accept_btn.setObjectName("Primary")
-        self.reject_btn = QPushButton("Не сейчас")
+        self.reject_btn = QPushButton(t("Не сейчас"))
         self.accept_btn.clicked.connect(self._accept)
         self.reject_btn.clicked.connect(self._reject)
         sugg = QHBoxLayout()
@@ -45,15 +46,15 @@ class PendingPage(QWidget):
         self.suggest_box.setLayout(sugg)
 
         self.list = QListWidget()
-        self.empty = QLabel("Пока пусто. Здесь появятся файлы, которые сработали на узел «Спросить».")
+        self.empty = QLabel(t("Пока пусто. Здесь появятся файлы, которые сработали на узел «Спросить»."))
         self.empty.setProperty("role", "muted")
         self.empty.setWordWrap(True)
 
-        self.move_btn = QPushButton("Перенести")
+        self.move_btn = QPushButton(t("Перенести"))
         self.move_btn.setObjectName("Primary")
-        self.elsewhere_btn = QPushButton("Перенести в…")
-        self.skip_btn = QPushButton("Пропустить")
-        self.refresh_btn = QPushButton("Обновить")
+        self.elsewhere_btn = QPushButton(t("Перенести в…"))
+        self.skip_btn = QPushButton(t("Пропустить"))
+        self.refresh_btn = QPushButton(t("Обновить"))
         self.status = QLabel("")
         self.status.setProperty("role", "muted")
 
@@ -102,21 +103,20 @@ class PendingPage(QWidget):
         rule, _, ext = key.partition("|")
         self._suggestion = (key, folder)
         self.suggest_label.setText(
-            f"Правило «{rule}», файлы {ext}: ты {count} раз кладёшь их в «{folder}». "
-            "Запомнить и переносить туда автоматически?"
+            t("Правило «{rule}», файлы {ext}: ты {count} раз кладёшь их в «{folder}». Запомнить и переносить туда автоматически?", rule=rule, ext=ext, count=count, folder=folder)
         )
         self.suggest_box.setVisible(True)
 
     def _accept(self) -> None:
         if self._suggestion:
             self.learned.accept(self._suggestion[0])
-            self.status.setText("Запомнено. Новые файлы пойдут в эту папку.")
+            self.status.setText(t("Запомнено. Новые файлы пойдут в эту папку."))
         self.reload()
 
     def _reject(self) -> None:
         if self._suggestion:
             self.learned.reject(self._suggestion[0])
-            self.status.setText("Предложение сброшено. Спрошу снова, когда накопится.")
+            self.status.setText(t("Предложение сброшено. Спрошу снова, когда накопится."))
         self.reload()
 
     def _current_id(self) -> str | None:
@@ -130,23 +130,23 @@ class PendingPage(QWidget):
         src = Path(pm.src)
         if not src.exists():
             self.store.remove(pid)
-            self.status.setText("Файла уже нет на месте. Запись удалена.")
+            self.status.setText(t("Файла уже нет на месте. Запись удалена."))
             return False
         dst = prepare_target(dst_path)
         try:
             self.journal.record_move(src, dst, pm.rule)
             apply_move(src, dst)
         except OSError as e:
-            self.status.setText(f"Не удалось перенести: {e}")
+            self.status.setText(t("Не удалось перенести: {e}", e=e))
             return False
         self.store.remove(pid)
-        self.status.setText(f"Перенесено: {dst.name}")
+        self.status.setText(t("Перенесено: {name}", name=dst.name))
         return True
 
     def _move(self) -> None:
         pid = self._current_id()
         if pid is None:
-            self.status.setText("Выбери файл в списке.")
+            self.status.setText(t("Выбери файл в списке."))
             return
         pm = self.store.get(pid)
         if pm is None:
@@ -158,13 +158,13 @@ class PendingPage(QWidget):
     def _move_elsewhere(self) -> None:
         pid = self._current_id()
         if pid is None:
-            self.status.setText("Выбери файл в списке.")
+            self.status.setText(t("Выбери файл в списке."))
             return
         pm = self.store.get(pid)
         if pm is None:
             self.reload()
             return
-        folder = QFileDialog.getExistingDirectory(self, "Куда перенести", str(self.base))
+        folder = QFileDialog.getExistingDirectory(self, t("Куда перенести"), str(self.base))
         if not folder:
             return
         target_dir = Path(folder)
@@ -181,8 +181,8 @@ class PendingPage(QWidget):
     def _skip(self) -> None:
         pid = self._current_id()
         if pid is None:
-            self.status.setText("Выбери файл в списке.")
+            self.status.setText(t("Выбери файл в списке."))
             return
         self.store.remove(pid)
         self.reload()
-        self.status.setText("Пропущено. Файл остаётся на месте.")
+        self.status.setText(t("Пропущено. Файл остаётся на месте."))

@@ -5,6 +5,7 @@ from PySide6.QtWidgets import (
 )
 
 from core.config import AppSettings, save_settings
+from core.i18n import t
 from core.journal import Journal
 from core.prefs import UiPrefs, save_prefs
 from modules.organizer.rules_store import load_rules, save_rules
@@ -38,16 +39,16 @@ class _Page(QWidget):
 
 class JournalPage(_Page):
     def __init__(self, journal: Journal, prefs: UiPrefs) -> None:
-        super().__init__("Журнал действий", "Все перемещения файлов. Можно вернуть любое.")
+        super().__init__(t("Журнал действий"), t("Все перемещения файлов. Можно вернуть любое."))
         self.journal = journal
         self.prefs = prefs
         self.model = JournalModel()
         self.view = QListView()
         self.view.setModel(self.model)
 
-        self.undo_btn = QPushButton("Вернуть выбранное")
+        self.undo_btn = QPushButton(t("Вернуть выбранное"))
         self.undo_btn.clicked.connect(self._undo)
-        self.refresh_btn = QPushButton("Обновить")
+        self.refresh_btn = QPushButton(t("Обновить"))
         self.refresh_btn.clicked.connect(self.reload)
         self.status = _muted("")
         bar = QHBoxLayout()
@@ -67,28 +68,28 @@ class JournalPage(_Page):
     def _undo(self) -> None:
         idx = self.view.currentIndex()
         if not idx.isValid():
-            self.status.setText("Выберите запись.")
+            self.status.setText(t("Выберите запись."))
             return
         entry = self.model.item(idx.row())
         if self.prefs.confirm_undo:
             answer = QMessageBox.question(
-                self, "Вернуть файл", f"Вернуть {entry.dst} на место?"
+                self, t("Вернуть файл"), t("Вернуть {dst} на место?", dst=entry.dst)
             )
             if answer != QMessageBox.StandardButton.Yes:
                 return
         ok = self.journal.undo(entry.id)
-        self.status.setText("Файл возвращён на место." if ok else "Не удалось: файл уже перемещён или удалён.")
+        self.status.setText(t("Файл возвращён на место.") if ok else t("Не удалось: файл уже перемещён или удалён."))
         self.reload()
 
 
 class RulesPage(_Page):
     def __init__(self) -> None:
-        super().__init__("Правила сортировки", "Галочка включает правило. Порядок сверху вниз.")
+        super().__init__(t("Правила сортировки"), t("Галочка включает правило. Порядок сверху вниз."))
         self.rules = load_rules()
         self.model = RuleModel(self.rules)
         self.view = QListView()
         self.view.setModel(self.model)
-        self.save_btn = QPushButton("Сохранить правила")
+        self.save_btn = QPushButton(t("Сохранить правила"))
         self.save_btn.setObjectName("Primary")
         self.save_btn.clicked.connect(self._save)
         self.status = _muted("")
@@ -102,12 +103,12 @@ class RulesPage(_Page):
 
     def _save(self) -> None:
         save_rules(self.rules)
-        self.status.setText("Правила сохранены.")
+        self.status.setText(t("Правила сохранены."))
 
 
 class SettingsPage(_Page):
     def __init__(self, settings: AppSettings, prefs: UiPrefs, on_prefs_changed) -> None:
-        super().__init__("Настройки", "Изменения применяются после нажатия «Сохранить».")
+        super().__init__(t("Настройки"), t("Изменения применяются после нажатия «Сохранить»."))
         self.settings = settings
         self.prefs = prefs
         self.on_prefs_changed = on_prefs_changed
@@ -117,26 +118,26 @@ class SettingsPage(_Page):
         form.setVerticalSpacing(12)
 
         self.theme = QComboBox()
-        self.theme.addItem("Серая (тёмная)", "graphite")
-        self.theme.addItem("Светлая серая", "light")
+        self.theme.addItem(t("Серая (тёмная)"), "graphite")
+        self.theme.addItem(t("Светлая серая"), "light")
         self.theme.setCurrentIndex(0 if prefs.theme == "graphite" else 1)
 
         self.font_size = QSpinBox()
         self.font_size.setRange(8, 16)
         self.font_size.setValue(prefs.font_size)
 
-        self.compact = QCheckBox("Компактные списки")
+        self.compact = QCheckBox(t("Компактные списки"))
         self.compact.setChecked(prefs.compact_lists)
-        self.tooltips = QCheckBox("Подсказки при наведении")
+        self.tooltips = QCheckBox(t("Подсказки при наведении"))
         self.tooltips.setChecked(prefs.show_tooltips)
-        self.confirm = QCheckBox("Спрашивать перед возвратом файла")
+        self.confirm = QCheckBox(t("Спрашивать перед возвратом файла"))
         self.confirm.setChecked(prefs.confirm_undo)
 
         sections = ["schema", "journal", "rules", "settings"]
         current = prefs.default_section if prefs.default_section in sections else "schema"
         self.default_section = QComboBox()
-        for title, key in [("Схема", "schema"), ("Журнал", "journal"),
-                           ("Правила", "rules"), ("Настройки", "settings")]:
+        for title, key in [(t("Схема"), "schema"), (t("Журнал"), "journal"),
+                           (t("Правила"), "rules"), (t("Настройки"), "settings")]:
             self.default_section.addItem(title, key)
         self.default_section.setCurrentIndex(sections.index(current))
 
@@ -144,28 +145,28 @@ class SettingsPage(_Page):
         self.journal_limit.setRange(20, 2000)
         self.journal_limit.setValue(prefs.journal_limit)
 
-        self.dry = QCheckBox("Только показывать план, без переносов")
+        self.dry = QCheckBox(t("Только показывать план, без переносов"))
         self.dry.setChecked(settings.organizer.dry_run)
-        self.autostart = QCheckBox("Запускать вместе с Windows")
+        self.autostart = QCheckBox(t("Запускать вместе с Windows"))
         self.autostart.setChecked(settings.autostart)
         self.excluded = QLineEdit("; ".join(settings.organizer.excluded_dirs))
 
-        form.addRow("Тема:", self.theme)
-        form.addRow("Размер шрифта:", self.font_size)
+        form.addRow(t("Тема:"), self.theme)
+        form.addRow(t("Размер шрифта:"), self.font_size)
         form.addRow("", self.compact)
         form.addRow("", self.tooltips)
         form.addRow("", self.confirm)
-        form.addRow("Открывать сначала:", self.default_section)
-        form.addRow("Строк в журнале:", self.journal_limit)
+        form.addRow(t("Открывать сначала:"), self.default_section)
+        form.addRow(t("Строк в журнале:"), self.journal_limit)
         form.addRow("", self.dry)
         form.addRow("", self.autostart)
-        form.addRow("Не трогать папки:", self.excluded)
+        form.addRow(t("Не трогать папки:"), self.excluded)
 
         self.error = _muted("")
-        self.save_btn = QPushButton("Сохранить")
+        self.save_btn = QPushButton(t("Сохранить"))
         self.save_btn.setObjectName("Primary")
         self.save_btn.clicked.connect(self._save)
-        self.reset_btn = QPushButton("Сбросить внешний вид")
+        self.reset_btn = QPushButton(t("Сбросить внешний вид"))
         self.reset_btn.clicked.connect(self._reset_look)
         bar = QHBoxLayout()
         bar.addWidget(self.save_btn)
@@ -173,7 +174,7 @@ class SettingsPage(_Page):
         bar.addStretch()
 
         self.root.addLayout(form)
-        self.root.addWidget(_muted("Автозапуск применится после перезапуска."))
+        self.root.addWidget(_muted(t("Автозапуск применится после перезапуска.")))
         self.root.addWidget(self.error)
         self.root.addLayout(bar)
         self.root.addStretch()
@@ -202,4 +203,4 @@ class SettingsPage(_Page):
         save_settings(self.settings)
 
         self.on_prefs_changed(self.prefs)
-        self.error.setText("Сохранено. Тема и размер применены сразу.")
+        self.error.setText(t("Сохранено. Тема и размер применены сразу."))

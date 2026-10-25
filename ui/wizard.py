@@ -1,6 +1,7 @@
 from PySide6.QtWidgets import QCheckBox, QLabel, QLineEdit, QVBoxLayout, QWizard, QWizardPage
 
 from core.config import AppSettings
+from core.i18n import t
 from win.autostart import set_autostart
 from win.paths import downloads_dir
 
@@ -8,11 +9,11 @@ from win.paths import downloads_dir
 class FolderPage(QWizardPage):
     def __init__(self, settings: AppSettings) -> None:
         super().__init__()
-        self.setTitle("Папка для отслеживания")
-        self.setSubTitle("AutoUtil будет следить за этой папкой и раскладывать новые файлы.")
+        self.setTitle(t("wizard.folder.title"))
+        self.setSubTitle(t("wizard.folder.subtitle"))
         self.edit = QLineEdit(str(downloads_dir()))
         layout = QVBoxLayout(self)
-        layout.addWidget(QLabel("Путь к папке:"))
+        layout.addWidget(QLabel(t("wizard.folder.label")))
         layout.addWidget(self.edit)
         self.settings = settings
 
@@ -24,10 +25,10 @@ class FolderPage(QWizardPage):
 class OptionsPage(QWizardPage):
     def __init__(self, settings: AppSettings) -> None:
         super().__init__()
-        self.setTitle("Настройки")
-        self.dry = QCheckBox("Сначала только показывать план, без переносов (рекомендуется)")
+        self.setTitle(t("wizard.options.title"))
+        self.dry = QCheckBox(t("wizard.options.dry"))
         self.dry.setChecked(True)
-        self.auto = QCheckBox("Запускать вместе с Windows")
+        self.auto = QCheckBox(t("wizard.options.autostart"))
         self.auto.setChecked(True)
         layout = QVBoxLayout(self)
         layout.addWidget(self.dry)
@@ -43,7 +44,7 @@ class OptionsPage(QWizardPage):
 class SetupWizard(QWizard):
     def __init__(self, settings: AppSettings) -> None:
         super().__init__()
-        self.setWindowTitle("AutoUtil: первый запуск")
+        self.setWindowTitle(t("wizard.title"))
         self.settings = settings
         self.addPage(FolderPage(settings))
         self.addPage(OptionsPage(settings))

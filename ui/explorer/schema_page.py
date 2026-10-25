@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QMessageBox, QPushButton, QSpinBox, QVBoxLayout, QWidget,
 )
 
+from core.i18n import t
 from core.schema import (
     ALLOWED_LINKS, KIND_TITLES, MAX_RULES, NO_BRANCH_FROM,
     Edge, Node, Schema, load_schema, save_schema,
@@ -38,48 +39,41 @@ NODE_ACCENT = {
     "exclude": "#E06C75",
     "target": "#5FB38A",
 }
-NEW_TITLES = {
-    "source": "Новая папка",
-    "filter": "Новый фильтр",
-    "ask": "Спросить",
-    "exclude": "Исключить",
-    "target": "Новая цель",
-}
-HELP = {
-    "source": (
-        "Папка: откуда берутся файлы. Укажи полный путь в поле «Папка», например "
-        "C:\\Users\\you\\Downloads. От папки тяни линию к фильтру, исключению или цели."
-    ),
-    "filter": (
-        "Фильтр: отбирает файлы. Все заполненные условия должны выполняться. Расширения, "
-        "ключевые слова, маска имени вида invoice_*.pdf, регулярное выражение, размер в МБ, "
-        "возраст в днях. Линия «Связать «нет»» ведёт в ветку для файлов, которые не прошли."
-    ),
-    "ask": (
-        "Спросить: файл не переносится сам. Он попадает в раздел «Спросить», где ты решаешь: "
-        "перенести или пропустить. Обычно ставится после фильтра и перед целью."
-    ),
-    "exclude": (
-        "Исключить: файлы, подходящие под маски, не трогаются. Маски через запятую, например "
-        "*.tmp, node_modules. Действует на все пути, которые идут через этот узел."
-    ),
-    "target": (
-        "Цель: куда кладётся файл. Путь относительно домашней папки пользователя. "
-        "Можно использовать {year}, например Документы/Чеки/{year}. "
-        "Имя файла: шаблон вида {date}_{name}.{ext}, пусто значит оставить имя. "
-        "Цель никуда не ведёт."
-    ),
-}
-GENERAL_HELP = (
-    "Как это работает: папка, затем фильтры, исключения или вопрос, затем цель. Каждый путь "
-    "от папки до цели становится правилом. Линия «нет» из фильтра включается, когда файл "
-    "не прошёл условия этого фильтра."
-)
-FOOTER_HELP = (
-    "«Запустить схему» сохраняет правила, берёт папки из узлов «Папка» и начинает наблюдение. "
-    "«Только правила» обновляет правила без запуска. Перенос идёт через журнал, любой файл "
-    "можно вернуть."
-)
+def _new_titles():
+    return {
+        "source": t("Новая папка"),
+        "filter": t("Новый фильтр"),
+        "ask": t("Спросить"),
+        "exclude": t("Исключить"),
+        "target": t("Новая цель"),
+    }
+def _help():
+    return {
+        "source": t(
+            "Папка: откуда берутся файлы. Укажи полный путь в поле «Папка», например "
+            "C:\\Users\\you\\Downloads. От папки тяни линию к фильтру, исключению или цели."
+        ),
+        "filter": (
+            t("Фильтр: отбирает файлы. Все заполненные условия должны выполняться. Расширения, ключевые слова, маска имени вида invoice_*.pdf, регулярное выражение, размер в МБ, возраст в днях. Линия «Связать «нет»» ведёт в ветку для файлов, которые не прошли.")
+        ),
+        "ask": (
+            t("Спросить: файл не переносится сам. Он попадает в раздел «Спросить», где ты решаешь: перенести или пропустить. Обычно ставится после фильтра и перед целью.")
+        ),
+        "exclude": (
+            t("Исключить: файлы, подходящие под маски, не трогаются. Маски через запятую, например *.tmp, node_modules. Действует на все пути, которые идут через этот узел.")
+        ),
+        "target": (
+            t("Цель: куда кладётся файл. Путь относительно домашней папки пользователя. Можно использовать {year}, например Документы/Чеки/{year}. Имя файла: шаблон вида {date}_{name}.{ext}, пусто значит оставить имя. Цель никуда не ведёт.")
+        ),
+    }
+def _general_help():
+    return (
+        t("Как это работает: папка, затем фильтры, исключения или вопрос, затем цель. Каждый путь от папки до цели становится правилом. Линия «нет» из фильтра включается, когда файл не прошёл условия этого фильтра.")
+    )
+def _footer_help():
+    return (
+        t("«Запустить схему» сохраняет правила, берёт папки из узлов «Папка» и начинает наблюдение. «Только правила» обновляет правила без запуска. Перенос идёт через журнал, любой файл можно вернуть.")
+    )
 FIELDS = {
     "source": ["title", "folder"],
     "filter": ["title", "exts", "keywords", "name_glob", "name_regex",
@@ -88,21 +82,22 @@ FIELDS = {
     "exclude": ["title", "masks"],
     "target": ["title", "folder", "rename"],
 }
-LABELS = [
-    ("title", "Название:"),
-    ("folder", "Папка:"),
-    ("rename", "Имя файла:"),
-    ("masks", "Что исключить:"),
-    ("exts", "Расширения:"),
-    ("keywords", "Ключевые слова:"),
-    ("name_glob", "Маска имени:"),
-    ("name_regex", "Регулярное выражение:"),
-    ("min_mb", "Больше, МБ:"),
-    ("max_mb", "Меньше, МБ:"),
-    ("min_age_days", "Старше, дней:"),
-    ("max_age_days", "Новее, дней:"),
-    ("gps", ""),
-]
+def _labels():
+    return [
+        ("title", t("Название:")),
+        ("folder", t("Папка:")),
+        ("rename", t("Имя файла:")),
+        ("masks", t("Что исключить:")),
+        ("exts", t("Расширения:")),
+        ("keywords", t("Ключевые слова:")),
+        ("name_glob", t("Маска имени:")),
+        ("name_regex", t("Регулярное выражение:")),
+        ("min_mb", t("Больше, МБ:")),
+        ("max_mb", t("Меньше, МБ:")),
+        ("min_age_days", t("Старше, дней:")),
+        ("max_age_days", t("Новее, дней:")),
+        ("gps", ""),
+    ]
 
 
 def shape_path(kind: str) -> QPainterPath:
@@ -173,7 +168,7 @@ class NodeItem(QGraphicsPathItem):
         accent = NODE_ACCENT[self.node.kind]
         title = self.node.title.replace("<", "&lt;").replace(">", "&gt;")
         self.label.setHtml(
-            f'<div style="color:{accent}; font-size:7pt;">{KIND_TITLES[self.node.kind].upper()}</div>'
+            f'<div style="color:{accent}; font-size:7pt;">{t(KIND_TITLES[self.node.kind]).upper()}</div>'
             f'<div style="color:#F2F2F2; font-size:9pt; font-weight:600;">{title}</div>'
         )
 
@@ -326,12 +321,12 @@ class SchemaPage(QWidget):
             "name_regex": QLineEdit(),
             "min_mb": self._mb_box(), "max_mb": self._mb_box(),
             "min_age_days": self._days_box(), "max_age_days": self._days_box(),
-            "gps": QCheckBox("Только фото с GPS"),
+            "gps": QCheckBox(t("Только фото с GPS")),
             "rename": QLineEdit(),
         }
         self.w["masks"].setPlaceholderText("*.tmp, node_modules")
         self.w["exts"].setPlaceholderText("pdf, jpg")
-        self.w["keywords"].setPlaceholderText("итого, чек")
+        self.w["keywords"].setPlaceholderText(t("итого, чек"))
         self.w["name_glob"].setPlaceholderText("invoice_*.pdf")
         self.w["name_regex"].setPlaceholderText("^IMG_\\d+")
         self.w["rename"].setPlaceholderText("{date}_{name}.{ext}")
@@ -339,14 +334,14 @@ class SchemaPage(QWidget):
         form = QFormLayout()
         form.setVerticalSpacing(10)
         self.rows: dict[str, tuple[QLabel, QWidget]] = {}
-        for key, text in LABELS:
+        for key, text in _labels():
             lbl = QLabel(text)
             form.addRow(lbl, self.w[key])
             self.rows[key] = (lbl, self.w[key])
 
-        heading = QLabel("Свойства узла")
+        heading = QLabel(t("Свойства узла"))
         heading.setObjectName("Heading")
-        self.help = QLabel(GENERAL_HELP)
+        self.help = QLabel(_general_help())
         self.help.setObjectName("Help")
         self.help.setWordWrap(True)
 
@@ -354,8 +349,8 @@ class SchemaPage(QWidget):
         ins.setContentsMargins(0, 0, 0, 0)
         ins.addWidget(heading)
         ins.addLayout(form)
-        ins.addWidget(self._btn("Применить поля", "", self._apply_fields,
-                                "Сохраняет изменения выбранного узла в схеме"))
+        ins.addWidget(self._btn(t("Применить поля"), "", self._apply_fields,
+                                t("Сохраняет изменения выбранного узла в схеме")))
         ins.addSpacing(12)
         ins.addWidget(self.help)
         ins.addStretch()
@@ -373,18 +368,18 @@ class SchemaPage(QWidget):
 
         row = QHBoxLayout()
         row.setSpacing(8)
-        row.addWidget(self._btn("Связать", "", lambda: self._start_link("yes"),
-                                "Выдели узел и нажми, затем кликни узел-получатель. Ведёт «да»"))
-        row.addWidget(self._btn("Связать «нет»", "", lambda: self._start_link("no"),
-                                "Ветка для файлов, которые не прошли фильтр. Только от фильтра"))
-        row.addWidget(self._btn("Удалить", "DangerBtn", self._delete,
-                                "Удаляет выделенные узлы и связи"))
-        row.addWidget(self._btn("Сохранить", "", self._save,
-                                "Записывает схему на диск, в папку AutoUtil"))
-        row.addWidget(self._btn("Экспорт", "", self._export,
-                                "Сохраняет схему в файл .json, чтобы передать другому человеку"))
-        row.addWidget(self._btn("Импорт", "", self._import,
-                                "Загружает схему из файла .json, заменяет текущую"))
+        row.addWidget(self._btn(t("Связать"), "", lambda: self._start_link("yes"),
+                                t("Выдели узел и нажми, затем кликни узел-получатель. Ведёт «да»")))
+        row.addWidget(self._btn(t("Связать «нет»"), "", lambda: self._start_link("no"),
+                                t("Ветка для файлов, которые не прошли фильтр. Только от фильтра")))
+        row.addWidget(self._btn(t("Удалить"), "DangerBtn", self._delete,
+                                t("Удаляет выделенные узлы и связи")))
+        row.addWidget(self._btn(t("Сохранить"), "", self._save,
+                                t("Записывает схему на диск, в папку AutoUtil")))
+        row.addWidget(self._btn(t("Экспорт"), "", self._export,
+                                t("Сохраняет схему в файл .json, чтобы передать другому человеку")))
+        row.addWidget(self._btn(t("Импорт"), "", self._import,
+                                t("Загружает схему из файла .json, заменяет текущую")))
         row.addStretch()
 
         body = QHBoxLayout()
@@ -392,18 +387,18 @@ class SchemaPage(QWidget):
         body.addWidget(self.view, 1)
         body.addLayout(right)
 
-        footer_text = QLabel(FOOTER_HELP)
+        footer_text = QLabel(_footer_help())
         footer_text.setObjectName("Muted")
         footer_text.setWordWrap(True)
         footer = QHBoxLayout()
         footer.addWidget(footer_text, 1)
         footer.addSpacing(12)
-        footer.addWidget(self._btn("Только правила", "", self._apply,
-                                   "Обновляет правила, но не запускает наблюдение за папками"),
+        footer.addWidget(self._btn(t("Только правила"), "", self._apply,
+                                   t("Обновляет правила, но не запускает наблюдение за папками")),
                          0, Qt.AlignmentFlag.AlignVCenter)
         footer.addSpacing(8)
-        footer.addWidget(self._btn("Запустить схему", "Primary", self._run,
-                                   "Сохраняет правила и начинает следить за папками из схемы"),
+        footer.addWidget(self._btn(t("Запустить схему"), "Primary", self._run,
+                                   t("Сохраняет правила и начинает следить за папками из схемы")),
                          0, Qt.AlignmentFlag.AlignVCenter)
 
         self.status = QLabel("")
@@ -426,14 +421,14 @@ class SchemaPage(QWidget):
         box = QDoubleSpinBox()
         box.setRange(0, 1_000_000)
         box.setDecimals(1)
-        box.setSpecialValueText("выкл")
+        box.setSpecialValueText(t("выкл"))
         return box
 
     @staticmethod
     def _days_box() -> QSpinBox:
         box = QSpinBox()
         box.setRange(0, 36500)
-        box.setSpecialValueText("выкл")
+        box.setSpecialValueText(t("выкл"))
         return box
 
     def _btn(self, text: str, name: str, handler, tip: str = "") -> QPushButton:
@@ -476,10 +471,10 @@ class SchemaPage(QWidget):
     def _start_link(self, branch: str) -> None:
         src = self._single_node()
         if src is None:
-            self._say("Выдели узел-источник и нажми «Связать».")
+            self._say(t("Выдели узел-источник и нажми «Связать»."))
             return
         if branch == "no" and src.node.kind not in NO_BRANCH_FROM:
-            self._say("Ветка «нет» есть только у фильтра.")
+            self._say(t("Ветка «нет» есть только у фильтра."))
             return
         self._link_src = src
         self._link_branch = branch
@@ -488,7 +483,7 @@ class SchemaPage(QWidget):
         self._temp.setPen(QPen(QColor(color), 2.5, Qt.PenStyle.DashLine))
         self._temp.setZValue(-0.5)
         self.scene.addItem(self._temp)
-        self._say(f"Кликни узел-получатель для связи из «{src.node.title}». Esc отмена.")
+        self._say(t("Кликни узел-получатель для связи из «{title}». Esc отмена.", title=src.node.title))
 
     def update_temp_link(self, pos: QPointF) -> None:
         if self._link_src is None or self._temp is None:
@@ -498,7 +493,7 @@ class SchemaPage(QWidget):
 
     def cancel_link(self) -> None:
         self._end_link()
-        self._say("Связывание отменено.")
+        self._say(t("Связывание отменено."))
 
     def _end_link(self) -> None:
         if self._temp and self._temp.scene() is self.scene:
@@ -508,27 +503,27 @@ class SchemaPage(QWidget):
 
     def _finish_link(self, src: NodeItem, dst: NodeItem) -> None:
         if (src.node.kind, dst.node.kind) not in ALLOWED_LINKS:
-            self._say("Такая связь не поддерживается.")
+            self._say(t("Такая связь не поддерживается."))
             return
         if self._link_branch == "no" and src.node.kind not in NO_BRANCH_FROM:
-            self._say("Ветка «нет» есть только у фильтра.")
+            self._say(t("Ветка «нет» есть только у фильтра."))
             return
         exists = any(e.src == src.node.id and e.dst == dst.node.id and e.branch == self._link_branch for e in self.schema.edges)
         if exists:
-            self._say("Такая связь уже есть.")
+            self._say(t("Такая связь уже есть."))
             return
         self.schema.edges.append(Edge(src.node.id, dst.node.id, self._link_branch))
         self._add_edge_item(src.node.id, dst.node.id, self._link_branch)
-        self._say("Связано.")
+        self._say(t("Связано."))
 
     def _add(self, kind: str) -> None:
         center = self.view.mapToScene(self.view.viewport().rect().center())
         self.add_at(kind, center)
 
     def add_at(self, kind: str, pos: QPointF) -> None:
-        if kind not in NEW_TITLES:
+        if kind not in _new_titles():
             return
-        node = Node(id=uuid.uuid4().hex[:8], kind=kind, title=NEW_TITLES[kind],
+        node = Node(id=uuid.uuid4().hex[:8], kind=kind, title=_new_titles()[kind],
                     x=pos.x() - NODE_W / 2, y=pos.y() - NODE_H / 2)
         self.schema.nodes.append(node)
         item = NodeItem(node)
@@ -536,7 +531,7 @@ class SchemaPage(QWidget):
         self.nodes[node.id] = item
         self.scene.clearSelection()
         item.setSelected(True)
-        self._say(f"Добавлен узел: {KIND_TITLES[kind]}. Заполни поля справа.")
+        self._say(t("Добавлен узел: {kind}. Заполни поля справа.", kind=t(KIND_TITLES[kind])))
 
     def _remove_edge(self, edge: EdgeItem) -> None:
         sid, did, br = edge.src.node.id, edge.dst.node.id, edge.branch
@@ -562,7 +557,7 @@ class SchemaPage(QWidget):
                     self.scene.removeItem(item)
                 if self._link_src is item:
                     self._end_link()
-        self._say("Удалено.")
+        self._say(t("Удалено."))
 
     def _save(self) -> None:
         for n in self.schema.nodes:
@@ -570,70 +565,70 @@ class SchemaPage(QWidget):
             if item is not None:
                 n.x, n.y = item.pos().x(), item.pos().y()
         save_schema(self.schema)
-        self._say("Схема сохранена.")
+        self._say(t("Схема сохранена."))
 
     def _run(self) -> None:
         self._save()
         rules = self.schema.to_rules()
         folders = self.schema.source_folders()
         if not rules:
-            self._say("Нет ни одного пути «Папка → Цель». Соедини узлы и попробуй снова.")
+            self._say(t("Нет ни одного пути «Папка → Цель». Соедини узлы и попробуй снова."))
             return
         if not folders:
-            self._say("У папки-источника не заполнено поле «Папка».")
+            self._say(t("У папки-источника не заполнено поле «Папка»."))
             return
         missing = [f for f in folders if not Path(f).is_dir()]
         if missing:
-            self._say(f"Папка не найдена: {missing[0]}. Укажи полный путь.")
+            self._say(t("Папка не найдена: {path}. Укажи полный путь.", path=missing[0]))
             return
         save_rules(rules)
         if self.on_run:
             self.on_run(folders)
-        note = " Достигнут лимит правил, часть схемы не применена." if len(rules) >= MAX_RULES else ""
-        self._say(f"Схема запущена: правил {len(rules)}, папок {len(folders)}.{note}")
+        note = t(" Достигнут лимит правил, часть схемы не применена.") if len(rules) >= MAX_RULES else ""
+        self._say(t("Схема запущена: правил {rules}, папок {folders}.{note}", rules=len(rules), folders=len(folders), note=note))
 
     def _apply(self) -> None:
         self._save()
         rules = self.schema.to_rules()
         if not rules:
-            self._say("Нет ни одного пути «Папка → Цель». Соедини узлы и попробуй снова.")
+            self._say(t("Нет ни одного пути «Папка → Цель». Соедини узлы и попробуй снова."))
             return
         answer = QMessageBox.question(
-            self, "Применить схему", f"Заменить текущие правила на {len(rules)} правил из схемы?",
+            self, t("Применить схему"), t("Заменить текущие правила на {n} правил из схемы?", n=len(rules)),
         )
         if answer != QMessageBox.StandardButton.Yes:
             return
         save_rules(rules)
         if self.on_apply:
             self.on_apply(rules, self.schema.source_folders())
-        self._say(f"Применено правил: {len(rules)}.")
+        self._say(t("Применено правил: {n}.", n=len(rules)))
 
     def _export(self) -> None:
         self._save()
-        path, _ = QFileDialog.getSaveFileName(self, "Экспорт схемы", "schema.json",
-                                              "Схема AutoUtil (*.json)")
+        path, _ = QFileDialog.getSaveFileName(self, t("Экспорт схемы"), "schema.json",
+                                              t(t("Схема AutoUtil (*.json)")))
         if not path:
             return
         if not path.lower().endswith('.json'):
             path += '.json'
         save_schema(self.schema, Path(path))
-        self._say(f"Схема экспортирована: {path}")
+        self._say(t("Схема экспортирована: {path}", path=path))
 
     def _import(self) -> None:
-        path, _ = QFileDialog.getOpenFileName(self, "Импорт схемы", "", "Схема AutoUtil (*.json)")
+        path, _ = QFileDialog.getOpenFileName(self, t("Импорт схемы"), "", t("Схема AutoUtil (*.json)"))
         if not path:
             return
         try:
             imported = load_schema(Path(path))
         except Exception as e:
-            self._say(f"Не удалось прочитать схему: {e}")
+            self._say(t("Не удалось прочитать схему: {e}", e=e))
             return
         if not imported.nodes:
-            self._say("В файле нет ни одного узла.")
+            self._say(t("В файле нет ни одного узла."))
             return
         answer = QMessageBox.question(
-            self, "Импорт схемы",
-            "Заменить текущую схему импортированной? Несохранённые изменения пропадут.",
+            self, t(t("Импорт схемы")),
+            t("Заменить текущую схему импортированной? Несохранённые изменения пропадут."),
         )
         if answer != QMessageBox.StandardButton.Yes:
             return
@@ -641,7 +636,7 @@ class SchemaPage(QWidget):
         self._load()
         self._fill(None)
         self._save()
-        self._say(f"Схема импортирована: узлов {len(imported.nodes)}, связей {len(imported.edges)}.")
+        self._say(t("Схема импортирована: узлов {nodes}, связей {edges}.", nodes=len(imported.nodes), edges=len(imported.edges)))
 
     def _on_selection(self) -> None:
         node_item = self._single_node()
@@ -671,7 +666,7 @@ class SchemaPage(QWidget):
             show = key in visible
             lbl.setVisible(show)
             widget.setVisible(show)
-        self.help.setText(HELP.get(node.kind) if node else GENERAL_HELP)
+        self.help.setText(_help().get(node.kind) if node else _general_help())
 
     def _params(self, kind: str) -> dict:
         w = self.w
@@ -704,9 +699,9 @@ class SchemaPage(QWidget):
             try:
                 re.compile(pattern)
             except re.error as e:
-                self._say(f"Регулярное выражение не работает: {e}")
+                self._say(t("Регулярное выражение не работает: {e}", e=e))
                 return
         n.title = self.w["title"].text().strip() or n.title
         n.params = self._params(n.kind)
         self._current.refresh()
-        self._say("Поля применены. Не забудь \"Сохранить\".")
+        self._say(t("Поля применены. Не забудь \"Сохранить\"."))
