@@ -102,8 +102,10 @@ powershell
 pip install pyinstaller
 pyinstaller --noconfirm --onefile --windowed --name AutoUtil --icon ui\assets\autoutil.ico --add-data "ui\assets;ui\assets" main.py
 
-The result is dist\AutoUtil.exe. OCR models are pulled from the rapidocr package. If OCR doesn’t work in the built version, add --collect-data rapidocr.AutoUtil
-![Uploading image.png…]()
+The result is dist\AutoUtil.exe. OCR models are pulled from the rapidocr package. If OCR doesn’t work in the built version, add --collect-data rapidocr.
+
+
+AutoUtil
 
 Утилита для Windows, которая живёт в системном трее и наводит порядок в папке «Загрузки». Вы рисуете схему сортировки, как в n8n: папка, фильтры, условия, цель. Программа по этой схеме переносит новые файлы, ведёт журнал и умеет всё откатить.
 
