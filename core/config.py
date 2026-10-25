@@ -9,11 +9,6 @@ APP_DIR = Path(user_data_dir("AutoUtil", appauthor=False))
 SETTINGS_PATH = APP_DIR / "settings.toml"
 
 
-class GrabberSettings(BaseModel):
-    hotkey: str = "ctrl+shift+o"
-    ocr_languages: list[str] = Field(default_factory=lambda: ["ru", "en"])
-
-
 class OrganizerSettings(BaseModel):
     watch_dirs: list[str] = Field(default_factory=list)
     dry_run: bool = True
@@ -23,8 +18,6 @@ class OrganizerSettings(BaseModel):
 class AppSettings(BaseModel):
     autostart: bool = False
     first_run: bool = True
-    shell_menu: bool = True
-    grabber: GrabberSettings = Field(default_factory=GrabberSettings)
     organizer: OrganizerSettings = Field(default_factory=OrganizerSettings)
 
 

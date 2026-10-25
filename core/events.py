@@ -14,11 +14,6 @@ class Event:
     pass
 
 
-@dataclass
-class TextCaptured(Event):
-    text: str
-    source: str = "grabber"
-
 
 @dataclass
 class FileMoved(Event):
@@ -64,6 +59,11 @@ class EventBus:
 class PlanReady(Event):
     src: str
     dst: str
+    rule: str
+
+@dataclass
+class PendingAdded(Event):
+    src: str
     rule: str
 
 bus = EventBus()

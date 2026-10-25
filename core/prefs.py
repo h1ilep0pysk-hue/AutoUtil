@@ -10,14 +10,17 @@ PREFS_PATH = Path(user_data_dir("AutoUtil", appauthor=False)) / "prefs.toml"
 
 class UiPrefs(BaseModel):
     theme: str = "graphite"          # graphite | light
-    accent: str = "#4A8FD8"          # единственный цветной акцент
+    accent: str = "#4A8FD8"
     font_size: int = 10
     show_tooltips: bool = True
     compact_lists: bool = False
-    history_limit: int = 20          # 5..100
-    journal_limit: int = 200         # сколько записей показывать
-    default_section: str = "captures"  # captures | journal | rules | settings
+    journal_limit: int = 200
+    default_section: str = "schema"  # schema | journal | rules | settings
     confirm_undo: bool = True
+
+    def model_post_init(self, __context) -> None:
+        if self.default_section not in ("schema", "journal", "rules", "settings"):
+            self.default_section = "schema"
 
 
 def load_prefs() -> UiPrefs:

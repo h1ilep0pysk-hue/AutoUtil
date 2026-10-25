@@ -1,0 +1,31 @@
+[project]
+name = "autoutil"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.7",
+    "platformdirs>=4.2",
+    "tomli-w>=1.0",
+    "pyside6>=6.7",
+    "mss>=9.0",
+    "rapidocr>=3.0",
+    "onnxruntime>=1.18",
+    "pynput>=1.7",
+    "pyperclip>=1.9",
+    "watchdog>=4.0",
+    "pypdf>=4.2",
+    "pillow>=10.3",
+    "exifread>=3.0",
+    "winotify>=1.1",
+    "numpy>=1.26",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.2"]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["core*", "win*", "modules*", "ui*"]
