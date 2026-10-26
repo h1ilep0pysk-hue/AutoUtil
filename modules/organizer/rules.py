@@ -25,11 +25,13 @@ class Rule:
     max_mb: float = 0.0
     min_age_days: int = 0     # файл старше N дней
     max_age_days: int = 0     # файл новее N дней
+    delay_days: int = 0       # файл должен пролежать N дней до действия (узел «Через N дней»)
     requires_gps: bool = False
     forbid_gps: bool = False
     ask: bool = False         # не переносить сразу, положить в «Спросить»
+    to_bin: bool = False      # вместо переноса — убрать в корзину (узел «В корзину»)
     rename: str = ""          # шаблон имени, например {date}_{name}.{ext}
-    target: str = "",
+    target: str = ""          # FIX: была лишняя запятая, и значение по умолчанию становилось кортежем
     enabled: bool = True
 
     @property
@@ -66,7 +68,7 @@ class Rule:
         if self.max_mb and mb > self.max_mb:
             return None
 
-        age = _age_days(f.path)
+        age = age_days(f.path)
         if self.min_age_days and age < self.min_age_days:
             return None
         if self.max_age_days and age > self.max_age_days:
@@ -85,6 +87,11 @@ class Rule:
         if any(k.lower() in low for k in self.exclude_keywords):
             return None
 
+        # FIX: защита от пустого или некорректного target
+        if self.to_bin:
+            return ""  # корзина — папки-цели нет
+        if not isinstance(self.target, str) or not self.target:
+            return None
         return self.target.format(year=_year(f))
 
 
@@ -102,7 +109,8 @@ def _search(pattern: str, text: str) -> bool:
         return False
 
 
-def _age_days(path: Path) -> int:
+def age_days(path: Path) -> int:
+    """Возраст файла в днях по времени изменения (публичная: пользуется и сервис)."""
     try:
         mtime = datetime.datetime.fromtimestamp(path.stat().st_mtime)
     except OSError:

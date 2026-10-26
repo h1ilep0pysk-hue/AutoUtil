@@ -2,6 +2,7 @@ import re
 from datetime import datetime
 from pathlib import Path
 
+from core.i18n import t
 from modules.organizer.analyzer import Features
 
 _BAD = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
@@ -23,7 +24,7 @@ def _vendor(text: str) -> str:
         s = re.sub(r"\s+", " ", s).strip()
         if len(s) >= 3:
             return s[:30].strip()
-    return "неизвестно"
+    return t("naming.unknown_vendor")
 
 
 def render_name(template: str, f: Features) -> str:

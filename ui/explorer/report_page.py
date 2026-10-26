@@ -235,13 +235,14 @@ class ReportPage(QWidget):
         header = QLabel(t("Период: {start:%d.%m.%Y} — {end:%d.%m.%Y}", start=start, end=end))
         header.setProperty("role", "muted")
         self.content_layout.addWidget(header)
-        if r["moved"] == 0 and r["undone"] == 0:
+        if r["moved"] == 0 and r["undone"] == 0 and r["binned"] == 0:
             self._message(t("За период ничего не перенесено. Выбери другой период или проверь, что схема запущена."))
             return
         cards = QHBoxLayout()
         cards.setSpacing(12)
         for value, label in [
             (str(r["moved"]), t("перенесено файлов")),
+            (str(r["binned"]), t("Убрано правилом в корзину")),
             (t("{size:.1f} МБ", size=r["size_mb"]), t("общий размер")),
             (str(r["undone"]), t("возвращено откатом")),
             (str(r["trashed"]), t("убрано в корзину")),

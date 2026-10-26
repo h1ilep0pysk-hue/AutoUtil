@@ -1,13 +1,19 @@
-from PySide6.QtCore import Qt
+import logging
+from pathlib import Path
+
+from PySide6.QtCore import QObject, QThread, Qt, Signal
 from PySide6.QtWidgets import (
-    QCheckBox, QComboBox, QFormLayout, QHBoxLayout, QLabel, QLineEdit,
-    QListView, QMessageBox, QPushButton, QSpinBox, QVBoxLayout, QWidget,
+    QCheckBox, QComboBox, QFileDialog, QFormLayout, QHBoxLayout, QLabel, QLineEdit,
+    QListView, QListWidget, QListWidgetItem, QMessageBox, QPushButton, QSpinBox,
+    QVBoxLayout, QWidget,
 )
 
 from core.config import AppSettings, save_settings
 from core.i18n import t
 from core.journal import Journal
 from core.prefs import UiPrefs, save_prefs
+from modules.organizer.preview import DEFAULT_OCR_LIMIT, RulePreview, preview_rule
+from modules.organizer.rules import Rule
 from modules.organizer.rules_store import load_rules, save_rules
 from ui.explorer.models import JournalModel, RuleModel
 from win.autostart import set_autostart
@@ -71,6 +77,9 @@ class JournalPage(_Page):
             self.status.setText(t("Выберите запись."))
             return
         entry = self.model.item(idx.row())
+        if entry.kind == "bin":
+            self.status.setText(t("Файл в корзине. Верни его из корзины вручную."))
+            return
         if self.prefs.confirm_undo:
             answer = QMessageBox.question(
                 self, t("Вернуть файл"), t("Вернуть {dst} на место?", dst=entry.dst)
@@ -80,6 +89,42 @@ class JournalPage(_Page):
         ok = self.journal.undo(entry.id)
         self.status.setText(t("Файл возвращён на место.") if ok else t("Не удалось: файл уже перемещён или удалён."))
         self.reload()
+
+
+class _PreviewWorker(QObject):
+    """Считает предпросмотр в фоне: анализ папки может занять время."""
+    done = Signal(object)
+
+    def __init__(self, rule: Rule, folder: str) -> None:
+        super().__init__()
+        self.rule = rule
+        self.folder = folder
+
+    def run(self) -> None:
+        from win.paths import documents_dir
+
+        try:
+            result = preview_rule(self.rule, Path(self.folder), documents_dir().parent)
+        except Exception:
+            import logging
+            logging.getLogger("autoutil.ui").exception("Ошибка предпросмотра правила")
+            result = RulePreview()
+        self.done.emit(result)
+
+
+def _default_preview_folder() -> str:
+    """Первая папка-источник из живой схемы, иначе «Загрузки»."""
+    try:
+        from core.schema import load_schema
+
+        for f in load_schema().source_folders():
+            if Path(f).is_dir():
+                return f
+    except Exception:
+        pass
+    from win.paths import downloads_dir
+
+    return str(downloads_dir())
 
 
 class RulesPage(_Page):
@@ -93,7 +138,29 @@ class RulesPage(_Page):
         self.save_btn.setObjectName("Primary")
         self.save_btn.clicked.connect(self._save)
         self.status = _muted("")
+
+        # --- предпросмотр правила -------------------------------------
+        self.preview_folder = QLineEdit(_default_preview_folder())
+        self.preview_browse = QPushButton("…")
+        self.preview_browse.setFixedWidth(36)
+        self.preview_browse.setToolTip(t("preview.pick"))
+        self.preview_browse.clicked.connect(self._pick_preview_folder)
+        self.preview_btn = QPushButton(t("preview.show"))
+        self.preview_btn.clicked.connect(self._run_preview)
+        prow = QHBoxLayout()
+        prow.addWidget(QLabel(t("preview.folder")))
+        prow.addWidget(self.preview_folder, 1)
+        prow.addWidget(self.preview_browse)
+        prow.addWidget(self.preview_btn)
+        self.preview_list = QListWidget()
+        self.preview_status = _muted("")
+        self._thread: QThread | None = None
+        self._worker: _PreviewWorker | None = None
+
         self.root.addWidget(self.view, 1)
+        self.root.addLayout(prow)
+        self.root.addWidget(self.preview_list, 1)
+        self.root.addWidget(self.preview_status)
         self.root.addWidget(self.save_btn)
         self.root.addWidget(self.status)
 
@@ -104,6 +171,53 @@ class RulesPage(_Page):
     def _save(self) -> None:
         save_rules(self.rules)
         self.status.setText(t("Правила сохранены."))
+
+    # --- предпросмотр ---------------------------------------------------
+
+    def _pick_preview_folder(self) -> None:
+        folder = QFileDialog.getExistingDirectory(self, t("preview.pick"), self.preview_folder.text())
+        if folder:
+            self.preview_folder.setText(folder)
+
+    def _run_preview(self) -> None:
+        idx = self.view.currentIndex()
+        if not idx.isValid():
+            self.preview_status.setText(t("preview.select_rule"))
+            return
+        folder = Path(self.preview_folder.text().strip())
+        if not folder.is_dir():
+            self.preview_status.setText(t("preview.folder_missing", path=str(folder)))
+            return
+        rule = self.model.item(idx.row())
+        self.preview_btn.setEnabled(False)
+        self.preview_status.setText(t("preview.running"))
+        self._thread = QThread(self)
+        self._worker = _PreviewWorker(rule, str(folder))
+        self._worker.moveToThread(self._thread)
+        self._thread.started.connect(self._worker.run)
+        self._worker.done.connect(self._show_preview)
+        self._worker.done.connect(self._thread.quit)
+        self._thread.start()
+
+    def _show_preview(self, result: RulePreview) -> None:
+        self.preview_btn.setEnabled(True)
+        self.preview_list.clear()
+        if not result.matches:
+            self.preview_status.setText(
+                t("preview.empty", total=result.total_files)
+            )
+            return
+        MAX_ROWS = 500
+        for path, where in result.matches[:MAX_ROWS]:
+            item = QListWidgetItem(f"{path.name}   →   {where}")
+            item.setToolTip(str(path))
+            self.preview_list.addItem(item)
+        note = t("preview.truncated", n=MAX_ROWS) if len(result.matches) > MAX_ROWS else ""
+        if result.ocr_capped:
+            note += " " + t("preview.ocr_capped", n=DEFAULT_OCR_LIMIT)
+        self.preview_status.setText(
+            t("preview.result", hits=len(result.matches), total=result.total_files) + note
+        )
 
 
 class SettingsPage(_Page):
@@ -203,4 +317,7 @@ class SettingsPage(_Page):
         save_settings(self.settings)
 
         self.on_prefs_changed(self.prefs)
-        self.error.setText(t("Сохранено. Тема и размер применены сразу."))
+        # FIX: явно сообщаем, какой режим сортировки теперь активен
+        note = (t("settings.dry_note_on") if self.settings.organizer.dry_run
+                else t("settings.dry_note_off"))
+        self.error.setText(t("Сохранено. Тема и размер применены сразу.") + " " + note)

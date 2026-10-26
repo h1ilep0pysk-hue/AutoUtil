@@ -18,6 +18,7 @@ from core.schema import (
     ALLOWED_LINKS, KIND_TITLES, MAX_RULES, NO_BRANCH_FROM,
     Edge, Node, Schema, load_schema, save_schema,
 )
+from modules.organizer.actions import UnsafeTargetError, resolve_target
 from modules.organizer.rules import Rule
 from modules.organizer.rules_store import save_rules
 from ui.explorer.node_palette import MIME, NodePalette
@@ -29,6 +30,8 @@ NODE_COLORS = {
     "filter": "#242424",
     "ask": "#242424",
     "exclude": "#242424",
+    "delay": "#242424",
+    "bin": "#242424",
     "target": "#242424",
 }
 
@@ -37,6 +40,8 @@ NODE_ACCENT = {
     "filter": "#9B7FD1",
     "ask": "#D9A441",
     "exclude": "#E06C75",
+    "delay": "#4E9FA8",
+    "bin": "#D45D5D",
     "target": "#5FB38A",
 }
 def _new_titles():
@@ -45,6 +50,8 @@ def _new_titles():
         "filter": t("Новый фильтр"),
         "ask": t("Спросить"),
         "exclude": t("Исключить"),
+        "delay": t("Отложить"),
+        "bin": t("Убрать в корзину"),
         "target": t("Новая цель"),
     }
 def _help():
@@ -61,6 +68,12 @@ def _help():
         ),
         "exclude": (
             t("Исключить: файлы, подходящие под маски, не трогаются. Маски через запятую, например *.tmp, node_modules. Действует на все пути, которые идут через этот узел.")
+        ),
+        "delay": (
+            t("Через N дней: откладывает действие на N дней с момента изменения файла. Когда срок пройдёт, файл будет перенесён в цель или убран в корзину. Ставь узел после фильтра и перед целью или корзиной. Отложенное видно в разделе «Спросить».")
+        ),
+        "bin": (
+            t("В корзину: файл отправляется в корзину Windows. Его можно вернуть оттуда вручную в любой момент. Ставь узел последним — после папки, фильтра или исключения.")
         ),
         "target": (
             t("Цель: куда кладётся файл. Путь относительно домашней папки пользователя. Можно использовать {year}, например Документы/Чеки/{year}. Имя файла: шаблон вида {date}_{name}.{ext}, пусто значит оставить имя. Цель никуда не ведёт.")
@@ -80,6 +93,8 @@ FIELDS = {
                "min_mb", "max_mb", "min_age_days", "max_age_days", "gps"],
     "ask": ["title"],
     "exclude": ["title", "masks"],
+    "delay": ["title", "days"],
+    "bin": ["title"],
     "target": ["title", "folder", "rename"],
 }
 def _labels():
@@ -96,6 +111,7 @@ def _labels():
         ("max_mb", t("Меньше, МБ:")),
         ("min_age_days", t("Старше, дней:")),
         ("max_age_days", t("Новее, дней:")),
+        ("days", t("Дней:")),
         ("gps", ""),
     ]
 
@@ -129,6 +145,15 @@ def shape_path(kind: str) -> QPainterPath:
             QPointF(w, h - c), QPointF(w - c, h), QPointF(c, h),
             QPointF(0, h - c), QPointF(0, c)
         ]))
+    elif kind == "delay":
+        p.addPolygon(QPolygonF([
+            QPointF(0, h / 2), QPointF(w * 0.22, 0), QPointF(w * 0.78, 0),
+            QPointF(w, h / 2), QPointF(w * 0.78, h), QPointF(w * 0.22, h)
+        ]))
+    elif kind == "bin":
+        p.addPolygon(QPolygonF([
+            QPointF(w * 0.30, 0), QPointF(w * 0.70, 0), QPointF(w, h), QPointF(0, h)
+        ]))
     else:
         p.addRoundedRect(QRectF(0, 0, w, h), h / 2, h / 2)
     p.closeSubpath()
@@ -143,7 +168,7 @@ def bezier(a: QPointF, b: QPointF) -> QPainterPath:
 
 
 class NodeItem(QGraphicsPathItem):
-    LABEL_OFFSET = {"filter": 36, "ask": 34, "exclude": 20}
+    LABEL_OFFSET = {"filter": 36, "ask": 34, "exclude": 20, "delay": 26, "bin": 24}
 
     def __init__(self, node: Node) -> None:
         super().__init__(shape_path(node.kind))
@@ -321,6 +346,7 @@ class SchemaPage(QWidget):
             "name_regex": QLineEdit(),
             "min_mb": self._mb_box(), "max_mb": self._mb_box(),
             "min_age_days": self._days_box(), "max_age_days": self._days_box(),
+            "days": self._delay_box(),
             "gps": QCheckBox(t("Только фото с GPS")),
             "rename": QLineEdit(),
         }
@@ -429,6 +455,14 @@ class SchemaPage(QWidget):
         box = QSpinBox()
         box.setRange(0, 36500)
         box.setSpecialValueText(t("выкл"))
+        return box
+
+    @staticmethod
+    def _delay_box() -> QSpinBox:
+        box = QSpinBox()
+        box.setRange(1, 3650)
+        box.setValue(1)
+        box.setSuffix(" " + t("дн."))
         return box
 
     def _btn(self, text: str, name: str, handler, tip: str = "") -> QPushButton:
@@ -572,7 +606,7 @@ class SchemaPage(QWidget):
         rules = self.schema.to_rules()
         folders = self.schema.source_folders()
         if not rules:
-            self._say(t("Нет ни одного пути «Папка → Цель». Соедини узлы и попробуй снова."))
+            self._say(t("Нет ни одного пути «Папка → Цель/Корзина». Соедини узлы и попробуй снова."))
             return
         if not folders:
             self._say(t("У папки-источника не заполнено поле «Папка»."))
@@ -591,7 +625,7 @@ class SchemaPage(QWidget):
         self._save()
         rules = self.schema.to_rules()
         if not rules:
-            self._say(t("Нет ни одного пути «Папка → Цель». Соедини узлы и попробуй снова."))
+            self._say(t("Нет ни одного пути «Папка → Цель/Корзина». Соедини узлы и попробуй снова."))
             return
         answer = QMessageBox.question(
             self, t("Применить схему"), t("Заменить текущие правила на {n} правил из схемы?", n=len(rules)),
@@ -626,6 +660,10 @@ class SchemaPage(QWidget):
         if not imported.nodes:
             self._say(t("В файле нет ни одного узла."))
             return
+        bad = self._bad_targets(imported)  # FIX: чужая схема не пишет вне домашней папки
+        if bad:
+            self._say(t("schema.rejected_target", path=bad[0]))
+            return
         answer = QMessageBox.question(
             self, t(t("Импорт схемы")),
             t("Заменить текущую схему импортированной? Несохранённые изменения пропадут."),
@@ -637,6 +675,24 @@ class SchemaPage(QWidget):
         self._fill(None)
         self._save()
         self._say(t("Схема импортирована: узлов {nodes}, связей {edges}.", nodes=len(imported.nodes), edges=len(imported.edges)))
+
+    def _bad_targets(self, schema: Schema) -> list[str]:
+        """Папки-цели, которые resolve_target не пускает (вне домашней папки)."""
+        from win.paths import documents_dir
+
+        base = documents_dir().parent
+        bad: list[str] = []
+        for n in schema.nodes:
+            if n.kind != "target":
+                continue
+            folder = n.params.get("folder", "")
+            if not folder:
+                continue
+            try:
+                resolve_target(base, folder)
+            except (UnsafeTargetError, OSError, ValueError):
+                bad.append(folder)
+        return bad
 
     def _on_selection(self) -> None:
         node_item = self._single_node()
@@ -659,6 +715,7 @@ class SchemaPage(QWidget):
         self.w["max_mb"].setValue(float(p.get("max_mb") or 0))
         self.w["min_age_days"].setValue(int(p.get("min_age_days") or 0))
         self.w["max_age_days"].setValue(int(p.get("max_age_days") or 0))
+        self.w["days"].setValue(int(p.get("days") or 1))
         self.w["gps"].setChecked(bool(p.get("requires_gps")))
         self.w["rename"].setText(p.get("rename", ""))
         visible = set(FIELDS[node.kind]) if node else set()
@@ -688,6 +745,8 @@ class SchemaPage(QWidget):
             }
         if kind == "exclude":
             return {"masks": _split(w["masks"].text())}
+        if kind == "delay":
+            return {"days": int(w["days"].value())}
         return {}
 
     def _apply_fields(self) -> None:

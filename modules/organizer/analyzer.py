@@ -1,5 +1,6 @@
 import datetime
 import hashlib
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -9,7 +10,13 @@ from pypdf import PdfReader
 
 from modules.organizer.ocr import recognize
 
+# exifread пишет warning на каждый PNG/JXL/WebP без EXIF-блока («PNG file
+# does not have exif data.») — для наших задач это шум, глушим.
+logging.getLogger("exifread").setLevel(logging.ERROR)
+
 IMAGE_EXT = {".png", ".jpg", ".jpeg", ".heic"}
+# EXIF-блок реально бывает только в JPEG/HEIC; PNG без него — не сканируем.
+EXIF_EXT = {".jpg", ".jpeg", ".heic"}
 MAX_TEXT = 2000
 
 
@@ -21,7 +28,6 @@ class Features:
     exif_date: datetime.datetime | None = None
     exif_has_gps: bool = False
     text: str = ""
-    sha256_head: str = ""
 
 
 def sha256_head(path: Path, n: int = 1024 * 1024) -> str:
@@ -75,12 +81,13 @@ def _image_text(path: Path) -> str:
 def analyze(path: Path, need_text: bool = False) -> Features:
     ext = path.suffix.lower()
     feats = Features(path=path, ext=ext, size=path.stat().st_size)
-    if ext in IMAGE_EXT:
+    if ext in EXIF_EXT:
         feats.exif_date, feats.exif_has_gps = _exif(path)
     if need_text:
         if ext == ".pdf":
             feats.text = _pdf_text(path)
         elif ext in IMAGE_EXT:
             feats.text = _image_text(path)
-    feats.sha256_head = sha256_head(path)
+    # sha256_head убран: поле нигде не использовалось, а это лишний мегабайт
+    # чтения на каждый файл. Полный хеш по требованию — sha256_full в dedupe.
     return feats

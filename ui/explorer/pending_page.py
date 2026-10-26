@@ -6,10 +6,11 @@ from PySide6.QtWidgets import (
     QVBoxLayout, QWidget,
 )
 
+from core.deferred import DeferredStore
 from core.i18n import t
 from core.journal import Journal
 from core.pending import PendingStore
-from modules.organizer.actions import apply_move, prepare_target
+from modules.organizer.actions import apply_move, prepare_target, recycle
 from modules.organizer.learning import Learned
 from modules.organizer.planner import learn_key
 from win.paths import documents_dir
@@ -20,6 +21,7 @@ class PendingPage(QWidget):
         super().__init__()
         self.journal = journal
         self.store = PendingStore()
+        self.deferred = DeferredStore()
         self.learned = Learned()
         self.base = documents_dir().parent
         self._suggestion: tuple[str, str] | None = None
@@ -69,6 +71,26 @@ class PendingPage(QWidget):
             bar.addWidget(btn)
         bar.addStretch()
 
+        # Отложенные файлы («Через N дней»): срок ещё не наступил.
+        self.dtitle = QLabel(t("Отложенные файлы"))
+        self.dtitle.setProperty("role", "title")
+        self.dsub = QLabel(t("Файлы, у которых действие «Через N дней» ещё не наступило. Можно выполнить сейчас или отменить."))
+        self.dsub.setProperty("role", "muted")
+        self.dsub.setWordWrap(True)
+        self.dlist = QListWidget()
+        self.dempty = QLabel(t("Пока нет отложенных файлов."))
+        self.dempty.setProperty("role", "muted")
+        self.dempty.setWordWrap(True)
+        self.drun_btn = QPushButton(t("Выполнить сейчас"))
+        self.dcancel_btn = QPushButton(t("Отменить"))
+        self.drun_btn.clicked.connect(self._run_now)
+        self.dcancel_btn.clicked.connect(self._cancel_deferred)
+        dbar = QHBoxLayout()
+        dbar.setSpacing(8)
+        dbar.addWidget(self.drun_btn)
+        dbar.addWidget(self.dcancel_btn)
+        dbar.addStretch()
+
         root = QVBoxLayout(self)
         root.setContentsMargins(24, 20, 24, 20)
         root.setSpacing(12)
@@ -78,6 +100,12 @@ class PendingPage(QWidget):
         root.addLayout(bar)
         root.addWidget(self.list, 1)
         root.addWidget(self.empty)
+        root.addSpacing(10)
+        root.addWidget(self.dtitle)
+        root.addWidget(self.dsub)
+        root.addLayout(dbar)
+        root.addWidget(self.dlist, 1)
+        root.addWidget(self.dempty)
         root.addWidget(self.status)
         self.reload()
 
@@ -85,13 +113,29 @@ class PendingPage(QWidget):
         self.list.clear()
         items = self.store.all_items()
         for it in items:
-            label = f"{Path(it.src).name}   →   {Path(it.dst).parent}   ({it.rule})"
+            dst_label = t("Корзина") if it.bin else Path(it.dst).parent
+            label = f"{Path(it.src).name}   →   {dst_label}   ({it.rule})"
             li = QListWidgetItem(label)
             li.setToolTip(it.src)
             li.setData(Qt.ItemDataRole.UserRole, it.id)
             self.list.addItem(li)
         self.empty.setVisible(not items)
         self._refresh_suggestion()
+        self._reload_deferred()
+
+    def _reload_deferred(self) -> None:
+        self.dlist.clear()
+        items = self.deferred.all_items()
+        for it in items:
+            when = t("через {n} дн.", n=it.days)
+            dst_label = t("Корзина") if it.bin else Path(it.dst).parent
+            ask_mark = f"  [{t('Спросить')}]" if it.ask else ""
+            label = f"{Path(it.src).name}   →   {dst_label}{ask_mark}   ({when}; {it.rule})"
+            li = QListWidgetItem(label)
+            li.setToolTip(it.src)
+            li.setData(Qt.ItemDataRole.UserRole, it.id)
+            self.dlist.addItem(li)
+        self.dempty.setVisible(not items)
 
     def _refresh_suggestion(self) -> None:
         found = self.learned.suggestions()
@@ -123,6 +167,10 @@ class PendingPage(QWidget):
         item = self.list.currentItem()
         return item.data(Qt.ItemDataRole.UserRole) if item else None
 
+    def _deferred_id(self) -> str | None:
+        item = self.dlist.currentItem()
+        return item.data(Qt.ItemDataRole.UserRole) if item else None
+
     def _do_move(self, pid: str, dst_path: Path) -> bool:
         pm = self.store.get(pid)
         if pm is None:
@@ -134,13 +182,31 @@ class PendingPage(QWidget):
             return False
         dst = prepare_target(dst_path)
         try:
+            dst = apply_move(src, dst)  # FIX: перенос первым, запись в журнал после успеха
             self.journal.record_move(src, dst, pm.rule)
-            apply_move(src, dst)
         except OSError as e:
             self.status.setText(t("Не удалось перенести: {e}", e=e))
             return False
         self.store.remove(pid)
         self.status.setText(t("Перенесено: {name}", name=dst.name))
+        return True
+
+    def _do_bin(self, pid: str) -> bool:
+        pm = self.store.get(pid)
+        if pm is None:
+            return False
+        src = Path(pm.src)
+        if not src.exists():
+            self.store.remove(pid)
+            self.status.setText(t("Файла уже нет на месте. Запись удалена."))
+            return False
+        ok = recycle(src)
+        if not ok:
+            self.status.setText(t("Не удалось убрать в корзину."))
+            return False
+        self.journal.record_bin(src, pm.rule)
+        self.store.remove(pid)
+        self.status.setText(t("Убрано в корзину: {name}", name=src.name))
         return True
 
     def _move(self) -> None:
@@ -152,7 +218,10 @@ class PendingPage(QWidget):
         if pm is None:
             self.reload()
             return
-        self._do_move(pid, Path(pm.dst))
+        if pm.bin:
+            self._do_bin(pid)
+        else:
+            self._do_move(pid, Path(pm.dst))
         self.reload()
 
     def _move_elsewhere(self) -> None:
@@ -186,3 +255,56 @@ class PendingPage(QWidget):
         self.store.remove(pid)
         self.reload()
         self.status.setText(t("Пропущено. Файл остаётся на месте."))
+
+    # --- Отложенные файлы («Через N дней») ------------------------------
+
+    def _run_now(self) -> None:
+        did = self._deferred_id()
+        if did is None:
+            self.status.setText(t("Выбери отложенный файл в списке."))
+            return
+        di = self.deferred.get(did)
+        if di is None:
+            self.reload()
+            return
+        src = Path(di.src)
+        if not src.exists():
+            self.deferred.remove(did)
+            self.reload()
+            self.status.setText(t("Файла уже нет на месте. Запись удалена."))
+            return
+        self.deferred.remove(did)
+        if di.ask:
+            self.pending.add(str(src), di.dst, di.rule, bin=di.bin)
+            self.status.setText(t("Файл вернулся в раздел «Спросить»."))
+            self.reload()
+            return
+        try:
+            if di.bin:
+                if not recycle(src):
+                    self.status.setText(t("Не удалось убрать в корзину."))
+                    self.reload()
+                    return
+                self.journal.record_bin(src, di.rule)
+                self.status.setText(t("Убрано в корзину: {name}", name=src.name))
+            else:
+                dst = prepare_target(Path(di.dst))
+                dst = apply_move(src, dst)  # FIX: перенос первым, запись после успеха
+                self.journal.record_move(src, dst, di.rule)
+                self.status.setText(t("Перенесено: {name}", name=dst.name))
+        except OSError as e:
+            self.status.setText(t("Не удалось перенести: {e}", e=e))
+        self.reload()
+
+    def _cancel_deferred(self) -> None:
+        did = self._deferred_id()
+        if did is None:
+            self.status.setText(t("Выбери отложенный файл в списке."))
+            return
+        di = self.deferred.get(did)
+        if di is None:
+            self.reload()
+            return
+        self.deferred.remove(did)
+        self.reload()
+        self.status.setText(t("Отменено: {name} остаётся на месте.", name=Path(di.src).name))

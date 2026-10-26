@@ -21,7 +21,7 @@ def wait_stable(path: Path, polls: int = 3, interval: float = 0.5, timeout: floa
         if not path.exists():
             return False
         size = path.stat().st_size
-        if size > 0 and size == last:
+        if size == last:  # FIX: пустые файлы тоже считаем устоявшимися (раньше ждали весь таймаут)
             stable += 1
         else:
             stable = 0
@@ -37,9 +37,14 @@ def wait_stable(path: Path, polls: int = 3, interval: float = 0.5, timeout: floa
     return False
 
 
+_DEDUPE_WINDOW = 10.0  # сек: один и тот же путь не обрабатываем чаще
+
+
 class _Handler(FileSystemEventHandler):
     def __init__(self, on_file: Callable[[Path], None]) -> None:
         self.on_file = on_file
+        self._recent: dict[Path, float] = {}
+        self._lock = threading.Lock()
 
     def on_created(self, event):
         if not event.is_directory:
@@ -52,6 +57,17 @@ class _Handler(FileSystemEventHandler):
     def _dispatch(self, path: Path) -> None:
         if path.suffix.lower() in IGNORED_SUFFIXES:
             return
+        # FIX: on_created и on_moved могут прилететь на один и тот же файл
+        # (браузеры создают файл и сразу переименовывают) — дедуп на окно.
+        now = time.monotonic()
+        with self._lock:
+            last = self._recent.get(path)
+            if last is not None and now - last < _DEDUPE_WINDOW:
+                return
+            self._recent[path] = now
+            if len(self._recent) > 4096:
+                cutoff = now - _DEDUPE_WINDOW
+                self._recent = {p: t for p, t in self._recent.items() if t >= cutoff}
         threading.Thread(target=self.on_file, args=(path,), daemon=True).start()
 
 

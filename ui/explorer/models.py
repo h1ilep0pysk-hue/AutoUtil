@@ -2,6 +2,7 @@ from PySide6.QtCore import QAbstractListModel, QModelIndex, Qt
 
 from core.i18n import t
 from core.journal import JournalEntry
+from pathlib import Path
 from modules.organizer.rules import Rule
 
 
@@ -29,9 +30,12 @@ class JournalModel(_BaseModel):
         e: JournalEntry = self._items[index.row()]
         if role == Qt.ItemDataRole.DisplayRole:
             mark = t("[возвращён] ") if e.undone else ""
+            if e.kind == "bin":
+                return f"{mark}{e.timestamp[:19]}   {t('убрано в корзину')}: {Path(e.src).name}"
             return f"{mark}{e.timestamp[:19]}   {e.dst}"
         if role == Qt.ItemDataRole.ToolTipRole:
-            return t("Откуда: {src}\nКуда: {dst}\nПравило: {rule}", src=e.src, dst=e.dst, rule=e.rule)
+            dst = t("Корзина") if e.kind == "bin" else e.dst
+            return t("Откуда: {src}\nКуда: {dst}\nПравило: {rule}", src=e.src, dst=dst, rule=e.rule)
         return None
 
 
@@ -41,7 +45,10 @@ class RuleModel(_BaseModel):
             return None
         r: Rule = self._items[index.row()]
         if role == Qt.ItemDataRole.DisplayRole:
-            return f"{r.name}   →   {r.target}"
+            dst = t("Корзина") if r.to_bin else r.target
+            if r.delay_days:
+                dst += f" ({t('через {n} дн.', n=r.delay_days)})"
+            return f"{r.name}   →   {dst}"
         if role == Qt.ItemDataRole.CheckStateRole:
             return Qt.CheckState.Checked if r.enabled else Qt.CheckState.Unchecked
         return None
