@@ -3,6 +3,7 @@ import threading
 from dataclasses import dataclass
 from typing import Callable
 
+from core.i18n import t
 from core.state import state
 
 log = logging.getLogger("autoutil.notifier")
@@ -64,6 +65,6 @@ class Notifier:
             self._sink(batch[0])
         else:
             self._sink(Notice(
-                title="AutoUtil",
-                body=f"Событий: {len(batch)}. Откройте журнал, чтобы посмотреть.",
+                title=t("notify.title"),
+                body=t("notify.batch", n=len(batch)),
             ))

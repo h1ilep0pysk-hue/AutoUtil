@@ -9,6 +9,7 @@ PREFS_PATH = Path(user_data_dir("AutoUtil", appauthor=False)) / "prefs.toml"
 
 
 class UiPrefs(BaseModel):
+    language: str = ""              # "" (not chosen yet) | en | ru
     theme: str = "graphite"          # graphite | light
     accent: str = "#4A8FD8"
     font_size: int = 10

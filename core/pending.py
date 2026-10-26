@@ -19,6 +19,7 @@ class PendingMove:
     dst: str
     rule: str
     created: str
+    bin: bool = False   # «Перенести» для такого файла убирает его в корзину
 
 
 class PendingStore:
@@ -40,13 +41,14 @@ class PendingStore:
         )
         tmp.replace(self.path)
 
-    def add(self, src: str, dst: str, rule: str) -> PendingMove:
+    def add(self, src: str, dst: str, rule: str, bin: bool = False) -> PendingMove:
         item = PendingMove(
             id=uuid.uuid4().hex,
             src=src,
             dst=dst,
             rule=rule,
             created=datetime.now(timezone.utc).isoformat(),
+            bin=bool(bin),
         )
         with _lock:
             items = self._read()

@@ -6,20 +6,23 @@ from pathlib import Path
 from PySide6.QtGui import QIcon
 
 from core.config import load_settings, save_settings
+from core.events import ModeChanged, bus  # FIX
+from core.i18n import set_language
 from core.journal import Journal
 from core.log import setup_logging
 from core.notifier import Notifier
-from core.prefs import load_prefs
+from core.prefs import load_prefs, save_prefs
 from modules.organizer.service import OrganizerService
 from ui.explorer import ExplorerWindow
 from ui.explorer.theme import apply_qss
 from ui.journal_view import JournalView
+from ui.language_dialog import LanguageDialog
 from ui.theme import apply_theme
 from ui.tray import Tray
 from ui.wizard import SetupWizard
 from win.toast import show_toast
 
-MUTEX_NAME = "Global\\AutoUtil_SingleInstance"
+MUTEX_NAME = "Local\\AutoUtil_SingleInstance"
 ERROR_ALREADY_EXISTS = 183
 SECTIONS = {"schema", "pending", "journal", "report", "rules", "settings"}
 
@@ -48,6 +51,14 @@ def main() -> int:
     apply_theme(app)
     apply_qss(app, prefs)
 
+    # Language is asked once, before anything else is shown. Stored in prefs.toml.
+    if not prefs.language:
+        dialog = LanguageDialog()
+        dialog.exec()
+        prefs.language = dialog.choice
+        save_prefs(prefs)
+    set_language(prefs.language)
+
     if settings.first_run:
         wizard = SetupWizard(settings)
         if wizard.exec() != SetupWizard.DialogCode.Accepted:
@@ -56,6 +67,7 @@ def main() -> int:
 
     journal = Journal()
     notifier = Notifier(sink=show_toast)
+    bus.subscribe(ModeChanged, lambda e: notifier.on_mode_change(e.mode == "active"))  # FIX: уведомления после паузы/DND
     organizer = OrganizerService(settings.organizer, journal, notifier)
     if settings.organizer.watch_dirs:
         organizer.start()

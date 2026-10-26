@@ -1,6 +1,7 @@
 """Схема сортировки: узлы и связи, компиляция в правила.
 
-Узлы: source (папка), filter (фильтр), ask (спросить), exclude (исключить), target (цель).
+Узлы: source (папка), filter (фильтр), ask (спросить), exclude (исключить),
+delay (через N дней), bin (в корзину), target (цель).
 Связи: branch "yes" (обычная) и "no" (ветка «нет», только из фильтра).
 """
 from __future__ import annotations
@@ -21,14 +22,18 @@ KIND_TITLES = {
     "filter": "Фильтр",
     "ask": "Спросить",
     "exclude": "Исключить",
+    "delay": "Через N дней",
+    "bin": "В корзину",
     "target": "Цель",
 }
 
 ALLOWED_LINKS = {
-    ("source", "filter"), ("source", "exclude"), ("source", "target"),
-    ("exclude", "filter"), ("exclude", "ask"), ("exclude", "target"),
-    ("filter", "filter"), ("filter", "ask"), ("filter", "target"),
-    ("ask", "filter"), ("ask", "target"),
+    ("source", "filter"), ("source", "exclude"), ("source", "delay"), ("source", "target"), ("source", "bin"),
+    ("exclude", "filter"), ("exclude", "ask"), ("exclude", "delay"), ("exclude", "target"), ("exclude", "bin"),
+    ("filter", "filter"), ("filter", "ask"), ("filter", "delay"), ("filter", "target"), ("filter", "bin"),
+    ("ask", "filter"), ("ask", "delay"), ("ask", "target"), ("ask", "bin"),
+    ("delay", "filter"), ("delay", "ask"), ("delay", "exclude"), ("delay", "delay"),
+    ("delay", "target"), ("delay", "bin"),
 }
 NO_BRANCH_FROM = {"filter"}
 
@@ -77,7 +82,7 @@ class Schema:
             if steps[0] > MAX_STEPS or len(out) >= MAX_RULES or spec.dead:
                 return
             node = by_id[nid]
-            if node.kind == "target":
+            if node.kind in ("target", "bin"):
                 emit(spec, node)
                 return
             outs = children.get(nid, [])
@@ -123,6 +128,7 @@ class Spec:
     max_mb: float = 0.0
     min_age: int = 0
     max_age: int = 0
+    delay_days: int = 0
     gps: bool | None = None
     masks: list[str] = field(default_factory=list)
     ask: bool = False
@@ -231,10 +237,13 @@ def apply_pass(spec: Spec, node: Node) -> Spec:
         s.ask = True
     elif node.kind == "exclude":
         s.masks += [m.strip() for m in node.params.get("masks", []) if m.strip()]
+    elif node.kind == "delay":
+        s.delay_days = max(s.delay_days, int(node.params.get("days") or 0))
     return s
 
 
 def _make_rule(spec: Spec, target: Node) -> Rule:
+    is_bin = target.kind == "bin"
     return Rule(
         name=target.title,
         exts=spec.exts or [],
@@ -249,11 +258,13 @@ def _make_rule(spec: Spec, target: Node) -> Rule:
         max_mb=spec.max_mb,
         min_age_days=spec.min_age,
         max_age_days=spec.max_age,
+        delay_days=spec.delay_days,
         requires_gps=spec.gps is True,
         forbid_gps=spec.gps is False,
         ask=spec.ask,
+        to_bin=is_bin,
         rename=target.params.get("rename", ""),
-        target=target.params.get("folder", ""),
+        target="" if is_bin else target.params.get("folder", ""),
     )
 
 

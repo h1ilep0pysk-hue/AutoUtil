@@ -23,6 +23,12 @@ class FileMoved(Event):
 
 
 @dataclass
+class FileTrashed(Event):
+    src: str
+    rule: str
+
+
+@dataclass
 class FileMoveFailed(Event):
     path: str
     reason: str

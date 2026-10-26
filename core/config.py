@@ -13,6 +13,9 @@ class OrganizerSettings(BaseModel):
     watch_dirs: list[str] = Field(default_factory=list)
     dry_run: bool = True
     excluded_dirs: list[str] = Field(default_factory=list)
+    # Периодическая очистка безопасных кэшей (см. modules/organizer/cacheclean.py).
+    cache_clean: bool = True
+    cache_clean_days: int = 30
 
 
 class AppSettings(BaseModel):
