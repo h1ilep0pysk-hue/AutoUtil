@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import re
 import uuid
 from pathlib import Path
@@ -21,6 +22,7 @@ from core.schema import (
 from modules.organizer.actions import UnsafeTargetError, resolve_target
 from modules.organizer.rules import Rule
 from modules.organizer.rules_store import save_rules
+from ui.explorer.flow_dialog import SortingPreviewDialog
 from ui.explorer.node_palette import MIME, NodePalette
 
 NODE_W, NODE_H = 180, 72
@@ -33,6 +35,7 @@ NODE_COLORS = {
     "delay": "#242424",
     "bin": "#242424",
     "target": "#242424",
+    "dedupe": "#242424",
 }
 
 NODE_ACCENT = {
@@ -43,6 +46,7 @@ NODE_ACCENT = {
     "delay": "#4E9FA8",
     "bin": "#D45D5D",
     "target": "#5FB38A",
+    "dedupe": "#D98A4A",
 }
 def _new_titles():
     return {
@@ -53,6 +57,7 @@ def _new_titles():
         "delay": t("Отложить"),
         "bin": t("Убрать в корзину"),
         "target": t("Новая цель"),
+        "dedupe": t("Убрать дубликаты"),
     }
 def _help():
     return {
@@ -75,6 +80,12 @@ def _help():
         "bin": (
             t("В корзину: файл отправляется в корзину Windows. Его можно вернуть оттуда вручную в любой момент. Ставь узел последним — после папки, фильтра или исключения.")
         ),
+        "dedupe": (
+            t("Дубликаты: убирает копии, у которых рядом лежит точный дубль. "
+              "С маской (например robloxinstaller* и ext exe) дубликаты ищутся "
+              "только по ней. Пустые поля — авто-режим: плюс-минус похожее имя, "
+              "тот же размер и то же содержимое. Одна копия всегда остаётся.")
+        ),
         "target": (
             t("Цель: куда кладётся файл. Путь относительно домашней папки пользователя. Можно использовать {year}, например Документы/Чеки/{year}. Имя файла: шаблон вида {date}_{name}.{ext}, пусто значит оставить имя. Цель никуда не ведёт.")
         ),
@@ -96,6 +107,7 @@ FIELDS = {
     "delay": ["title", "days"],
     "bin": ["title"],
     "target": ["title", "folder", "rename"],
+    "dedupe": ["title", "exts", "name_glob"],
 }
 def _labels():
     return [
@@ -419,6 +431,10 @@ class SchemaPage(QWidget):
         footer = QHBoxLayout()
         footer.addWidget(footer_text, 1)
         footer.addSpacing(12)
+        footer.addWidget(self._btn(t("flow.open"), "", self._preview_flow,
+                                   t("flow.open_tip")),
+                         0, Qt.AlignmentFlag.AlignVCenter)
+        footer.addSpacing(8)
         footer.addWidget(self._btn(t("Только правила"), "", self._apply,
                                    t("Обновляет правила, но не запускает наблюдение за папками")),
                          0, Qt.AlignmentFlag.AlignVCenter)
@@ -621,6 +637,21 @@ class SchemaPage(QWidget):
         note = t(" Достигнут лимит правил, часть схемы не применена.") if len(rules) >= MAX_RULES else ""
         self._say(t("Схема запущена: правил {rules}, папок {folders}.{note}", rules=len(rules), folders=len(folders), note=note))
 
+    def _preview_flow(self) -> None:
+        """Окно «Предпросмотр сортировки»: куда полетят файлы по текущей схеме."""
+        self._save()
+        folders = self.schema.source_folders()
+        default = next((f for f in folders if Path(f).is_dir()), folders[0] if folders else "")
+        # Правила — из текущей схемы: предпросмотр показывает то, что сделает
+        # «Запустить схему». Если схема пуста, покажем по живым правилам.
+        rules = self.schema.to_rules() or None
+        try:
+            dialog = SortingPreviewDialog(default_folder=default, rules=rules, parent=self)
+            dialog.exec()
+        except Exception:
+            logging.getLogger("autoutil.ui").exception("Не удалось открыть предпросмотр сортировки")
+            self._say(t("flow.open_fail"))
+
     def _apply(self) -> None:
         self._save()
         rules = self.schema.to_rules()
@@ -745,6 +776,8 @@ class SchemaPage(QWidget):
             }
         if kind == "exclude":
             return {"masks": _split(w["masks"].text())}
+        if kind == "dedupe":
+            return {"exts": _exts(w["exts"].text()), "name_glob": w["name_glob"].text().strip()}
         if kind == "delay":
             return {"days": int(w["days"].value())}
         return {}

@@ -226,4 +226,28 @@ RU_EN = {
         'C:\\Users\\you\\Downloads. Drag a line from the folder to a filter, an exclusion or '
         'a target. Without a link to a target the folder does nothing.',
     'Поля применены. Не забудь "Сохранить".': 'Fields applied. Remember to press “Save”.',
+    'Дубликаты': 'Duplicates',
+    'Убрать дубликаты': 'Remove duplicates',
+    'Дубликаты: убирает копии файлов, у которых рядом лежит точный дубль — '
+    'тот же размер и то же содержимое (SHA-256). Укажи маску имени '
+    '(например robloxinstaller*) и расширения (например exe), тогда копии '
+    'ищутся только по маске. Можно оставить поля пустыми — узел найдёт '
+    'дубликаты сам: плюс-минус похожее имя («(1)», «копия», «download»), '
+    'тот же размер и тот же хеш. Из набора копий остаётся ровно одна; '
+    'убранное лежит в корзине, и его можно вернуть.':
+        'Duplicates: cleans the copies of a file when an identical twin sits '
+        'next to it — same size and same contents (SHA-256). Enter a name mask '
+        '(e.g. robloxinstaller*) and extensions (e.g. exe) to limit the search '
+        'to the mask. Leaving both fields empty is fine too — the node will '
+        'find duplicates on its own: roughly-similar names (“(1)”, “copy”, '
+        '“download”), same size and same hash. Exactly one copy of the set '
+        'stays; what was removed goes to the Recycle Bin and can be restored.',
+    'Дубликаты: убирает копии, у которых рядом лежит точный дубль. '
+    'С маской (например robloxinstaller* и ext exe) дубликаты ищутся '
+    'только по ней. Пустые поля — авто-режим: плюс-минус похожее имя, '
+    'тот же размер и то же содержимое. Одна копия всегда остаётся.':
+        'Duplicates: cleans the copies that have an identical twin next to '
+        'them. With a mask (e.g. robloxinstaller* and ext exe) duplicates are '
+        'searched by the mask only. Empty fields mean auto mode: roughly '
+        'similar name, same size and same contents. One copy always stays.',
 }

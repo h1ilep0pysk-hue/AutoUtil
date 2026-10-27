@@ -25,15 +25,19 @@ KIND_TITLES = {
     "delay": "Через N дней",
     "bin": "В корзину",
     "target": "Цель",
+    "dedupe": "Дубликаты",
 }
 
 ALLOWED_LINKS = {
     ("source", "filter"), ("source", "exclude"), ("source", "delay"), ("source", "target"), ("source", "bin"),
+    ("source", "dedupe"),
     ("exclude", "filter"), ("exclude", "ask"), ("exclude", "delay"), ("exclude", "target"), ("exclude", "bin"),
+    ("exclude", "dedupe"),
     ("filter", "filter"), ("filter", "ask"), ("filter", "delay"), ("filter", "target"), ("filter", "bin"),
+    ("filter", "dedupe"),
     ("ask", "filter"), ("ask", "delay"), ("ask", "target"), ("ask", "bin"),
     ("delay", "filter"), ("delay", "ask"), ("delay", "exclude"), ("delay", "delay"),
-    ("delay", "target"), ("delay", "bin"),
+    ("delay", "target"), ("delay", "bin"), ("delay", "dedupe"),
 }
 NO_BRANCH_FROM = {"filter"}
 
@@ -82,7 +86,7 @@ class Schema:
             if steps[0] > MAX_STEPS or len(out) >= MAX_RULES or spec.dead:
                 return
             node = by_id[nid]
-            if node.kind in ("target", "bin"):
+            if node.kind in ("target", "bin", "dedupe"):
                 emit(spec, node)
                 return
             outs = children.get(nid, [])
@@ -244,6 +248,24 @@ def apply_pass(spec: Spec, node: Node) -> Spec:
 
 def _make_rule(spec: Spec, target: Node) -> Rule:
     is_bin = target.kind == "bin"
+    if target.kind == "dedupe":
+        # Узел «Дубликаты»: свои расширения и маска имени складываются с
+        # условиями фильтров выше по цепочке.
+        exts = [_ext(e) for e in target.params.get("exts", []) if e]
+        for e in (spec.exts or []):
+            if e not in exts:
+                exts.append(e)
+        globs = list(spec.globs)
+        own = target.params.get("name_glob", "")
+        if own:
+            globs.append(own)
+        return Rule(
+            name=target.title,
+            exts=exts,
+            name_globs=globs,
+            dedupe=True,
+            delay_days=spec.delay_days,
+        )
     return Rule(
         name=target.title,
         exts=spec.exts or [],

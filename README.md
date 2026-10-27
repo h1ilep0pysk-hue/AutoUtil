@@ -1,5 +1,7 @@
 # AutoUtil
 
+**🇷🇺 Русский** | [🇬🇧 English](README_EN.md)
+
 Автосортировка файлов для Windows. Следит за выбранными папками (Загрузки, Рабочий стол и т.д.) и раскладывает файлы по правилам: документы — в «Документы», скриншоты постарше — в корзину, чеки — по папкам с OCR-распознаванием текста. Каждый перенос записывается в журнал и может быть отменён одним кликом.
 
 > **AutoUtil** keeps your folders tidy: it watches your folders and sorts new files by rules you draw as a simple scheme. Every move is logged and can be undone. Windows 10/11, fully offline.
@@ -89,7 +91,3 @@ win/                     Windows-специфика: пути, тосты, ав�
 tests/                   pytest-комплект
 build.ps1                сборка exe (PyInstaller --onefile --windowed)
 ```
-
-## English (short)
-
-AutoUtil watches your folders and sorts new files by rules: documents to Documents, old screenshots to the Recycle Bin, receipts by OCR-detected text. Draw the scheme as nodes and arrows (Folder → Filter → Target), run it, and every move is logged — undo anything with one click. Dry-run mode shows the plan without moving files; rule preview shows which files a rule would catch before anything happens. Fully offline, Windows 10/11, Python 3.12+.

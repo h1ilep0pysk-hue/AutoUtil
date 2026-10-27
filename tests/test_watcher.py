@@ -54,3 +54,41 @@ def test_dedupe_ignores_partial_downloads(tmp_path):
     handler._dispatch(tmp_path / "movie.crdownload")
     time.sleep(0.2)
     assert calls == []
+
+
+def _slow_handler(calls: list, moved_name: str = ""):
+    """Обработчик, который «отсортировал» файл (исчез с исходного пути)."""
+    def on_file(p: Path) -> None:
+        calls.append(p)
+        if moved_name and p.name == moved_name:
+            p.rename(p.with_name(moved_name + ".out"))
+    return _Handler(on_file)
+
+
+def test_same_name_recreated_after_move_is_processed(tmp_path):
+    """Дедуп-окно 10 с не должно «съедать» новый файл с тем же именем,
+    когда прежний уже уехал со своего места. FIX"""
+    calls: list[Path] = []
+    handler = _slow_handler(calls, moved_name="dup.bin")
+    target = tmp_path / "dup.bin"
+    target.write_bytes(b"x")
+    handler._dispatch(target)
+    time.sleep(0.3)  # обработчик успел перенести файл
+    assert not target.exists()
+
+    target.write_bytes(b"new copy")  # пользователь докачал то же имя снова
+    handler._dispatch(target)  # < 10 с от первого события
+    time.sleep(0.3)
+    assert len(calls) == 2, "вновь созданный файл с тем же именем должен обработаться"
+
+
+def test_same_name_while_still_here_is_deduped(tmp_path):
+    """Пока файл ещё на месте (тот же экземпляр), дедуп работает как раньше."""
+    calls: list[Path] = []
+    handler = _slow_handler(calls)
+    target = tmp_path / "same.bin"
+    target.write_bytes(b"x")
+    handler._dispatch(target)
+    handler._dispatch(target)  # дубль события того же экземпляра
+    time.sleep(0.3)
+    assert len(calls) == 1

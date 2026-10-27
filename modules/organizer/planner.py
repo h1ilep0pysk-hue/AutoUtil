@@ -4,6 +4,7 @@ from pathlib import Path
 
 from modules.organizer.actions import UnsafeTargetError, resolve_target  # FIX
 from modules.organizer.analyzer import Features
+from modules.organizer.dedupe import has_masked_copy
 from modules.organizer.learning import Learned
 from modules.organizer.naming import render_name
 from modules.organizer.rules import Rule
@@ -19,6 +20,7 @@ class PlannedMove:
     ask: bool = False
     to_bin: bool = False    # действие — убрать в корзину (dst не используется)
     delay_days: int = 0     # файл должен пролежать ещё N дней до действия
+    dedupe: bool = False    # корзина именно за дубль: копия файла остаётся на месте
 
 
 def learn_key(rule_name: str, ext: str) -> str:
@@ -28,6 +30,21 @@ def learn_key(rule_name: str, ext: str) -> str:
 def plan(feats: Features, rules: list[Rule], base: Path, learned: Learned) -> PlannedMove | None:
     for rule in rules:
         try:  # FIX: одно сломанное правило не должно ломать обработку файла
+            if rule.dedupe:
+                # Узел «Дубликаты»: файл убирается в корзину, только если
+                # рядом лежит его точная копия — та же маска (или плюс-минус
+                # то же имя в авто-режиме) и то же содержимое; из набора
+                # копий остаётся ровно одна.
+                if rule.masks_match(feats) and has_masked_copy(rule, feats):
+                    return PlannedMove(
+                        src=feats.path,
+                        dst=feats.path,
+                        rule=rule.name,
+                        to_bin=True,
+                        delay_days=rule.delay_days,
+                        dedupe=True,
+                    )
+                continue
             folder = rule.match(feats)
         except Exception:
             log.exception("Правило «%s» упало на файле %s", rule.name, feats.path.name)

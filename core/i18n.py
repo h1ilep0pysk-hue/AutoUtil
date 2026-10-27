@@ -154,10 +154,56 @@ _STRINGS: dict[str, dict[str, str]] = {
         "ru": "Под правило не попадёт ни один файл (проверено {total}).",
     },
     "preview.bin": {"en": "Recycle Bin", "ru": "Корзина"},
+    "preview.dedupe_bin": {
+        "en": "Recycle Bin (duplicate: one copy stays)",
+        "ru": "Корзина (дубликат: одна копия остаётся)",
+    },
     "preview.truncated": {"en": " (showing first {n})", "ru": " (показаны первые {n})"},
     "preview.ocr_capped": {
         "en": " (text recognition limited to {n} files)",
         "ru": " (распознавание текста ограничено {n} файлами)",
+    },
+    # предпросмотр сортировки: окно с анимацией файлов по всей схеме
+    "flow.open": {"en": "Sorting preview", "ru": "Предпросмотр сортировки"},
+    "flow.open_tip": {
+        "en": "Shows a window where files from the folder will fly to their destinations.",
+        "ru": "Покажет окно: куда полетят файлы из папки по текущей схеме.",
+    },
+    "flow.title": {"en": "Sorting preview", "ru": "Предпросмотр сортировки"},
+    "flow.replay": {"en": "Replay", "ru": "Повторить"},
+    "flow.close": {"en": "Close", "ru": "Закрыть"},
+    "flow.summary": {
+        "en": "{moves} of {total} files will be sorted",
+        "ru": "Будут разложены {moves} из {total} файлов",
+    },
+    "flow.unmatched": {
+        "en": ". Files left in place, no rule: {n}",
+        "ru": ". Останутся на месте, правила нет: {n}",
+    },
+    "flow.no_moves": {
+        "en": "The rules match no files here (checked {total}).",
+        "ru": "Под правила здесь не попадёт ни один файл (проверено {total}).",
+    },
+    "flow.delay": {"en": "in {days} d.", "ru": "через {days} дн."},
+    "flow.ask": {"en": "decision needed", "ru": "нужно решение"},
+    "flow.rule": {"en": "rule", "ru": "правило"},
+    "flow.nav_tip": {
+        "en": "Drag with the mouse or use arrows to pan the diagram, mouse wheel — zoom.",
+        "ru": "Двигай карту перетаскиванием мышью или стрелками; колесо мыши — приблизить.",
+    },
+    "flow.open_fail": {
+        "en": "Could not open the sorting preview window. Details are in the log.",
+        "ru": "Не удалось открыть окно предпросмотра сортировки. Подробности в логе.",
+    },
+    # возврат из паузы: разбираем то, что накопилось
+    "notify.resume_body": {
+        "en": "Sorting {n} files that arrived while paused.",
+        "ru": "Разбираю файлы, пришедшие во время паузы: {n}.",
+    },
+    # узел «Дубликаты»: убрали копию, оригинал остался
+    "notify.dedupe_body": {
+        "en": "Duplicate {name} moved to the Recycle Bin ({rule}). The other copy stays in place.",
+        "ru": "Дубликат {name} убран в корзину ({rule}). Другая копия осталась на месте.",
     },
     # настройки: что теперь делает сортировка после смены dry-run
     "settings.dry_note_on": {

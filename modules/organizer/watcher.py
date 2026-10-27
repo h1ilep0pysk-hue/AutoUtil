@@ -68,7 +68,21 @@ class _Handler(FileSystemEventHandler):
             if len(self._recent) > 4096:
                 cutoff = now - _DEDUPE_WINDOW
                 self._recent = {p: t for p, t in self._recent.items() if t >= cutoff}
-        threading.Thread(target=self.on_file, args=(path,), daemon=True).start()
+        threading.Thread(target=self._run, args=(path,), daemon=True).start()
+
+    def _run(self, path: Path) -> None:
+        existed = path.exists()
+        try:
+            self.on_file(path)
+        finally:
+            # «created → moved» для одного файла допускаются один раз в окно,
+            # НО когда файл уехал со своего места (отсортирован или возвращён
+            # из отката), тот же путь — снова честное новое событие. FIX: иначе
+            # докачка/пересоздание файла с тем же именем внутри 10 с
+            # терялось навсегда.
+            with self._lock:
+                if existed and not path.exists():
+                    self._recent.pop(path, None)
 
 
 class FolderWatcher:

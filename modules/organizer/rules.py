@@ -30,6 +30,7 @@ class Rule:
     forbid_gps: bool = False
     ask: bool = False         # не переносить сразу, положить в «Спросить»
     to_bin: bool = False      # вместо переноса — убрать в корзину (узел «В корзину»)
+    dedupe: bool = False      # узел «Дубликаты»: почистить копии, оставить одну
     rename: str = ""          # шаблон имени, например {date}_{name}.{ext}
     target: str = ""          # FIX: была лишняя запятая, и значение по умолчанию становилось кортежем
     enabled: bool = True
@@ -41,50 +42,60 @@ class Rule:
         return bool(self.keywords or self.keyword_groups or self.exclude_keywords
                     or "{vendor}" in self.rename)
 
-    def match(self, f: Features) -> str | None:
-        """Возвращает относительную папку назначения или None."""
-        if not self.enabled:
-            return None
+    def masks_match(self, f: Features) -> bool:
+        """Все условия правила (расширения, имя, размер, возраст, GPS, слова) выполнены?
+
+        Отдельно от match(): узел «Дубликаты» не имеет папки-цели, но должен
+        пользоваться той же логикой отбора.
+        """
         if self.exts and f.ext not in self.exts:
-            return None
+            return False
         if f.ext in self.exclude_exts:
-            return None
+            return False
         if _masked(f.path, self.exclude_globs):
-            return None
+            return False
 
         name = f.path.name
         if self.name_globs and not all(
             fnmatch.fnmatch(name.lower(), g.lower()) for g in self.name_globs
         ):
-            return None
+            return False
         if self.name_regexes and not all(_search(p, name) for p in self.name_regexes):
-            return None
+            return False
         if any(_search(p, name) for p in self.exclude_regexes):
-            return None
+            return False
 
         mb = f.size / MB
         if self.min_mb and mb < self.min_mb:
-            return None
+            return False
         if self.max_mb and mb > self.max_mb:
-            return None
+            return False
 
         age = age_days(f.path)
         if self.min_age_days and age < self.min_age_days:
-            return None
+            return False
         if self.max_age_days and age > self.max_age_days:
-            return None
+            return False
 
         if self.requires_gps and not f.exif_has_gps:
-            return None
+            return False
         if self.forbid_gps and f.exif_has_gps:
-            return None
+            return False
 
         low = f.text.lower()
         groups = ([self.keywords] if self.keywords else []) + self.keyword_groups
         for group in groups:
             if not any(k.lower() in low for k in group):
-                return None
+                return False
         if any(k.lower() in low for k in self.exclude_keywords):
+            return False
+        return True
+
+    def match(self, f: Features) -> str | None:
+        """Возвращает относительную папку назначения или None."""
+        if not self.enabled:
+            return None
+        if not self.masks_match(f):
             return None
 
         # FIX: защита от пустого или некорректного target

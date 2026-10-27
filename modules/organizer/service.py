@@ -4,12 +4,12 @@ from pathlib import Path
 
 from core.config import OrganizerSettings
 from core.deferred import DeferredStore
-from core.events import FileMoved, FileTrashed, PendingAdded, PlanReady, bus
+from core.events import FileMoved, FileTrashed, ModeChanged, PendingAdded, PlanReady, bus
 from core.i18n import t
 from core.journal import Journal
 from core.notifier import Notice, Notifier
 from core.pending import PendingStore
-from core.state import state
+from core.state import Mode, state
 from modules.organizer import cacheclean
 from modules.organizer.actions import apply_move, prepare_target, recycle
 from modules.organizer.analyzer import analyze
@@ -25,6 +25,7 @@ from win.paths import documents_dir
 log = logging.getLogger("autoutil.organizer")
 
 CHECK_INTERVAL_SECONDS = 900  # планировщик просыпается раз в 15 минут
+RETRY_INTERVAL_SECONDS = 30.0  # как часто перекидываются «неустоявшиеся» файлы
 
 
 class OrganizerService:
@@ -39,11 +40,25 @@ class OrganizerService:
         self.watcher: FolderWatcher | None = None
         self._sched_stop = threading.Event()
         self._sched_thread: threading.Thread | None = None
+        # Файлы, увиденные в паузу/DND. Watchdog событие приходит единожды:
+        # без этого буфера файл навсегда выпадал из сортировки. FIX
+        self._paused_paths: set[str] = set()
+        self._paused_lock = threading.Lock()
+        # Файлы, которым не удалось дождаться стабильности / прочитать их:
+        # событие из watchdog одноразовое, и из-за одного неудачного момента
+        # файл навсегда пропадал из сортировки. Теперь это очередь в фоне. FIX
+        self._retry: set[str] = set()
+        self._retry_lock = threading.Lock()
+        self._retry_stop = threading.Event()
+        self._retry_thread: threading.Thread | None = None
+        # Подписка один раз, в конструкторе: restart() не должен плодить дубли.
+        bus.subscribe(ModeChanged, self._on_mode_changed)
 
     def start(self) -> None:
         self.watcher = FolderWatcher(self.settings.watch_dirs, self.handle)
         self.watcher.start()
         self._start_scheduler()
+        self._start_retry()
         self._initial_scan()
 
     def stop(self) -> None:
@@ -54,6 +69,7 @@ class OrganizerService:
         if self._sched_thread is not None:
             self._sched_thread.join(timeout=5)
             self._sched_thread = None
+        self._stop_retry()
 
     def restart(self) -> None:
         self.stop()
@@ -63,6 +79,9 @@ class OrganizerService:
     # --- приём файла -----------------------------------------------------
 
     def handle(self, path: Path) -> None:
+        if not state.is_active():
+            self._stash_paused(path)
+            return
         try:
             self._handle(path)
         except Exception:
@@ -72,16 +91,100 @@ class OrganizerService:
                 body=t("notify.failure", name=path.name),
             ))
 
+    def _stash_paused(self, path: Path) -> None:
+        """Файлы, пришедшие в паузу или «Не беспокоить», копятся и разбираются
+        при возврате в активный режим, как будто только что появились. FIX"""
+        with self._paused_lock:
+            self._paused_paths.add(str(path))
+
+    # --- очередь повторных попыток -----------------------------------------
+
+    def _schedule_retry(self, path: Path) -> bool:
+        """Кладёт файл в очередь попыток раз в 30 с: событие из watchdog
+        одноразовое, и без этого залоченный в тот момент файл терялся
+        из сортировки навсегда. True — файл добавлен впервые."""
+        with self._retry_lock:
+            key = str(path)
+            if key in self._retry:
+                return False
+            self._retry.add(key)
+            return True
+
+    def _start_retry(self) -> None:
+        self._retry_stop.clear()
+        self._retry_thread = threading.Thread(
+            target=self._retry_loop, daemon=True, name="autoutil-retry",
+        )
+        self._retry_thread.start()
+
+    def _stop_retry(self) -> None:
+        self._retry_stop.set()
+        if self._retry_thread is not None:
+            self._retry_thread.join(timeout=5)
+            self._retry_thread = None
+
+    def _retry_loop(self) -> None:
+        while not self._retry_stop.wait(RETRY_INTERVAL_SECONDS):
+            self._safe_pump_retries()
+
+    def _safe_pump_retries(self) -> None:
+        try:
+            self._pump_retries()
+        except Exception:
+            log.exception("Ошибка прохода по неустоявшимся файлам")
+
+    def _pump_retries(self) -> None:
+        with self._retry_lock:
+            paths, self._retry = self._retry, set()
+        for raw in sorted(paths):
+            p = Path(raw)
+            if not p.exists():
+                continue  # файл исчез — проверять больше нечего
+            log.info("Повторная попытка: %s", raw)
+            self.handle(p)
+
+    def _on_mode_changed(self, event: ModeChanged) -> None:
+        if event.mode != Mode.ACTIVE.value:
+            return
+        with self._paused_lock:
+            saved, self._paused_paths = self._paused_paths, set()
+        paths = [Path(p) for p in sorted(saved)]
+        if not paths:
+            return
+        log.info("Возврат в активный режим: разбираю файлы, накопившиеся за паузу (%d)", len(paths))
+        self.notifier.notify(Notice(
+            title=t("notify.title"),
+            body=t("notify.resume_body", n=len(paths)),
+        ))
+        threading.Thread(
+            target=self._process_paused, args=(paths,), daemon=True, name="autoutil-resume",
+        ).start()
+
+    def _process_paused(self, paths: list[Path]) -> None:
+        for p in paths:
+            self.handle(p)
+
     def _handle(self, path: Path) -> None:
         if not state.is_active():
+            self._stash_paused(path)  # FIX: файл мог прийти во время резкой смены режима
             return
         if is_excluded(path, self.settings.excluded_dirs):
             return
         if not wait_stable(path):
+            # Файл исчез, залочен антивирусом или ещё пишется: событие
+            # одноразовое, поэтому не теряем файл, а идём в очередь
+            # повторных попыток. FIX
+            self._schedule_retry(path)
             return
         rules = [r for r in load_rules() if r.enabled]
         need_text = any(r.needs_text for r in rules)
-        feats = analyze(path, need_text=need_text)
+        try:
+            feats = analyze(path, need_text=need_text)
+        except OSError:
+            # Файл в этот миг недоступен (зафиксирован фоновым процессом) —
+            # временный сбой, не «правило не подходит»: повторяем позже молча. FIX
+            self._schedule_retry(path)
+            return
         move = plan(feats, rules, self.base, self.learned)
         if move is None:
             return
@@ -109,12 +212,15 @@ class OrganizerService:
 
     def _execute(self, move: PlannedMove) -> None:
         if move.ask:
-            self.pending.add(str(move.src), str(move.dst), move.rule, bin=move.to_bin)
-            bus.publish(PendingAdded(src=str(move.src), rule=move.rule))
-            self.notifier.notify(Notice(
-                title=t("notify.ask_title"),
-                body=t("notify.ask_body", name=move.src.name),
-            ))
+            # Повторное событие на тот же файл не должно плодить записи:
+            # файл либо будет перенесён, либо остановлен до добавления. FIX
+            if not any(i.src == str(move.src) for i in self.pending.all_items()):
+                self.pending.add(str(move.src), str(move.dst), move.rule, bin=move.to_bin)
+                bus.publish(PendingAdded(src=str(move.src), rule=move.rule))
+                self.notifier.notify(Notice(
+                    title=t("notify.ask_title"),
+                    body=t("notify.ask_body", name=move.src.name),
+                ))
             return
 
         if self.settings.dry_run:
@@ -132,14 +238,14 @@ class OrganizerService:
             return
 
         if move.to_bin:
-            self._to_bin(move.src, move.rule)
+            self._to_bin(move.src, move.rule, dedupe=move.dedupe)
             return
 
         self._move_now(move.src, move.dst, move.rule)
 
     # --- исполнение ------------------------------------------------------
 
-    def _to_bin(self, src: Path, rule: str) -> None:
+    def _to_bin(self, src: Path, rule: str, dedupe: bool = False) -> None:
         if not recycle(src):
             log.warning("Не удалось отправить в корзину: %s", src)
             self.notifier.notify(Notice(
@@ -152,9 +258,12 @@ class OrganizerService:
         except Exception:
             log.exception("Не удалось записать в журнал отправку в корзину: %s", src)
         bus.publish(FileTrashed(src=str(src), rule=rule))
+        # Дубликат: текст похож, но объясняет, что одна копия осталась на месте.
+        body = (t("notify.dedupe_body", name=src.name, rule=rule) if dedupe
+                else t("notify.bin_body", name=src.name, rule=rule))
         self.notifier.notify(Notice(
             title=t("notify.bin_title"),
-            body=t("notify.bin_body", name=src.name, rule=rule),
+            body=body,
         ))
         log.info("Убрано в корзину: %s (правило: %s)", src, rule)
 
@@ -162,6 +271,8 @@ class OrganizerService:
         try:
             size = src.stat().st_size
         except OSError:
+            if src.exists():  # FIX: залоченный на миг файл не должен теряться
+                self._schedule_retry(src)
             return
         dup = find_duplicate(src, dst.parent, size)
         if dup is not None:
@@ -175,10 +286,13 @@ class OrganizerService:
             apply_move(src, final_dst)  # FIX: перенос первым
         except OSError:
             log.exception("Не удалось перенести %s", src)
-            self.notifier.notify(Notice(
-                title=t("notify.title"),
-                body=t("notify.failure", name=src.name),
-            ))
+            # Повторяем по очереди, чтобы не терять файл при волне блокировок
+            # антивирусом/индексатором; уведомляем только при первой неудаче.
+            if self._schedule_retry(src):
+                self.notifier.notify(Notice(
+                    title=t("notify.title"),
+                    body=t("notify.failure", name=src.name),
+                ))
             return
         entry = None
         try:
