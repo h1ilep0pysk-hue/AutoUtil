@@ -6,6 +6,9 @@
 
 > **AutoUtil** keeps your folders tidy: it watches your folders and sorts new files by rules you draw as a simple scheme. Every move is logged and can be undone. Windows 10/11, fully offline.
 
+![Схема: страница редактора схемы](docs/scheme_editor.png)
+![Предпросмотр сортировки: анимация разлёта файлов](docs/sorting_preview.png)
+
 ---
 
 ## Возможности

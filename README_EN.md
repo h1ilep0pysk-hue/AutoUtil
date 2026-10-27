@@ -4,6 +4,9 @@
 
 Automatic file organizer for Windows. It watches the folders you choose (Downloads, Desktop, etc.) and sorts new files by rules: documents into *Documents*, older screenshots into the Recycle Bin, receipts into year folders using OCR text recognition. Every move is recorded in a journal and can be undone with one click.
 
+![Scheme editor page](docs/scheme_editor.png)
+![Sorting preview: animated file-flight diagram](docs/sorting_preview.png)
+
 ---
 
 ## Features

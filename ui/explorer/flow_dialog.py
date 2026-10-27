@@ -161,9 +161,10 @@ class _Chip(QGraphicsPathItem):
         self.setBrush(QBrush(color))
         self.setPen(QPen(color, 0))
         self.setOpacity(0.95)
-        text = QGraphicsTextItem(cap, self)
-        text.setDefaultTextColor(QColor("#101014"))
-        text.setPos(9, -2)
+        # FIX: ссылку храним на себе — иначе текст собирается мусорщиком.
+        self._text_item = QGraphicsTextItem(cap, self)
+        self._text_item.setDefaultTextColor(QColor("#101014"))
+        self._text_item.setPos(9, -2)
 
     def center(self) -> QPointF:
         r = self.boundingRect()
@@ -183,6 +184,10 @@ class _NodeBox(QGraphicsPathItem):
         self.setPen(QPen(QColor(accent), 2))
         self.setZValue(2)
         self.counter = 0
+        self._title_item: QGraphicsTextItem | None = None
+        self._sub_item: QGraphicsTextItem | None = None
+        # FIX: держим ссылки на подписи, иначе Python их собирает
+        # мусорщиком и узлы остаются без заголовков.
         title_item = QGraphicsTextItem(self)
         title_item.setDefaultTextColor(QColor(TEXT))
         title_item.setTextWidth(NODE_W - 24)
@@ -192,6 +197,8 @@ class _NodeBox(QGraphicsPathItem):
         sub_item.setDefaultTextColor(QColor(MUTED))
         sub_item.setTextWidth(NODE_W - 24)
         sub_item.setPos(12, 34)
+        self._title_item = title_item
+        self._sub_item = sub_item
         self._count_item = QGraphicsTextItem("", self)
         self._count_item.setDefaultTextColor(QColor(accent))
         self._count_item.setPos(NODE_W - 46, NODE_H - 36)
