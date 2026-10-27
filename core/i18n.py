@@ -221,6 +221,17 @@ _STRINGS: dict[str, dict[str, str]] = {
     "section.report": {"en": "Report", "ru": "Отчёт"},
     "section.rules": {"en": "Rules", "ru": "Правила"},
     "section.settings": {"en": "Settings", "ru": "Настройки"},
+    # настройки: плашка языка, меняется на месте
+    "settings.language": {"en": "Language", "ru": "Язык"},
+    "settings.language.hint": {
+        "en": "Applied right away, no restart needed (the tray menu updates after a restart).",
+        "ru": "Применяется сразу, без перезапуска (меню значка в трее обновится после перезапуска).",
+    },
+    "settings.language_applied": {"en": "Language: {lang}", "ru": "Язык: {lang}"},
+    # настройки: автозапуск
+    "settings.autostart.on": {"en": "Autostart is currently ON (Windows launch)", "ru": "Автозапуск включён (запуск с Windows)"},
+    "settings.autostart.off": {"en": "Autostart is currently OFF", "ru": "Автозапуск выключен"},
+    "settings.autostart.fail": {"en": "Could not change autostart — details in the log: {hint}", "ru": "Не удалось изменить автозапуск — подробности в логе: {hint}"},
     "failed.page": {
         "en": "Section \"{name}\" failed to load.\n\n{err}\n\nDetails in the log: {hint}",
         "ru": "Раздел «{name}» не загрузился.\n\n{err}\n\nПодробности в логе: {hint}",

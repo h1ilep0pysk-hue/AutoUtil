@@ -40,16 +40,26 @@ class ExplorerWindow(QMainWindow):
         if prefs is None:
             prefs = load_prefs()
         self.prefs = prefs
+        self.journal = journal
+        self.on_run_schema = on_run_schema
+        default = prefs.default_section
+        self._current_section = default if default in ("schema", "pending", "journal", "report", "rules", "settings") else "schema"
         self.setWindowTitle("AutoUtil")
         self.resize(1100, 720)
+        self._build_ui()
 
+    def _build_ui(self) -> None:
+        """Собрать страницы/сайдбар/стек; вызывается и при смене языка."""
         factories = {
-            "schema": lambda: SchemaPage(on_apply=self._on_schema_applied, on_run=on_run_schema),
-            "pending": lambda: PendingPage(journal),
-            "journal": lambda: JournalPage(journal, prefs),
-            "report": lambda: ReportPage(journal),
+            "schema": lambda: SchemaPage(on_apply=self._on_schema_applied, on_run=self.on_run_schema),
+            "pending": lambda: PendingPage(self.journal),
+            "journal": lambda: JournalPage(self.journal, self.prefs),
+            "report": lambda: ReportPage(self.journal),
             "rules": lambda: RulesPage(),
-            "settings": lambda: SettingsPage(settings, prefs, self.apply_prefs),
+            "settings": lambda: SettingsPage(
+                self.settings, self.prefs, self.apply_prefs,
+                on_language_changed=self.apply_language,
+            ),
         }
         names = {key: t(f"section.{key}") for key in factories}
         self.pages: dict[str, QWidget] = {}
@@ -75,9 +85,22 @@ class ExplorerWindow(QMainWindow):
         self.setCentralWidget(central)
         self.statusBar().showMessage(t("Готово"))
 
-        section = prefs.default_section if prefs.default_section in self.pages else "schema"
+        section = self._current_section if self._current_section in self.pages else "schema"
         self.sidebar.select(section)
         self._switch(section)
+
+    def apply_language(self) -> None:
+        """Язык изменён в настройках: пересобрать интерфейс на новом языке."""
+        old_central = self.centralWidget()
+        old_section = self._current_section
+        self._current_section = old_section
+        self._build_ui()
+        if old_central is not None:
+            old_central.deleteLater()
+        names = {"ru": "Русский", "en": "English"}
+        self.statusBar().showMessage(
+            t("settings.language_applied", lang=names.get(self.prefs.language, self.prefs.language))
+        )
 
     def apply_prefs(self, prefs: UiPrefs) -> None:
         self.prefs = prefs
@@ -85,6 +108,7 @@ class ExplorerWindow(QMainWindow):
         self.statusBar().showMessage(t("Настройки сохранены"))
 
     def _switch(self, key: str) -> None:
+        self._current_section = key
         page = self.pages.get(key)
         if page is None:
             log.error("Нет раздела с ключом %s", key)

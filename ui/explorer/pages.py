@@ -3,20 +3,20 @@ from pathlib import Path
 
 from PySide6.QtCore import QObject, QThread, Qt, Signal
 from PySide6.QtWidgets import (
-    QCheckBox, QComboBox, QFileDialog, QFormLayout, QHBoxLayout, QLabel, QLineEdit,
+    QCheckBox, QComboBox, QFileDialog, QFormLayout, QFrame, QHBoxLayout, QLabel, QLineEdit,
     QListView, QListWidget, QListWidgetItem, QMessageBox, QPushButton, QSpinBox,
     QVBoxLayout, QWidget,
 )
 
 from core.config import AppSettings, save_settings
-from core.i18n import t
+from core.i18n import set_language, t
 from core.journal import Journal
 from core.prefs import UiPrefs, save_prefs
 from modules.organizer.preview import DEFAULT_OCR_LIMIT, RulePreview, preview_rule
 from modules.organizer.rules import Rule
 from modules.organizer.rules_store import load_rules, save_rules
 from ui.explorer.models import JournalModel, RuleModel
-from win.autostart import set_autostart
+from win.autostart import autostart_enabled, set_autostart
 
 
 def _title(text: str) -> QLabel:
@@ -221,11 +221,13 @@ class RulesPage(_Page):
 
 
 class SettingsPage(_Page):
-    def __init__(self, settings: AppSettings, prefs: UiPrefs, on_prefs_changed) -> None:
+    def __init__(self, settings: AppSettings, prefs: UiPrefs, on_prefs_changed,
+                 on_language_changed=None) -> None:
         super().__init__(t("Настройки"), t("Изменения применяются после нажатия «Сохранить»."))
         self.settings = settings
         self.prefs = prefs
         self.on_prefs_changed = on_prefs_changed
+        self.on_language_changed = on_language_changed
 
         form = QFormLayout()
         form.setHorizontalSpacing(20)
@@ -261,8 +263,11 @@ class SettingsPage(_Page):
 
         self.dry = QCheckBox(t("Только показывать план, без переносов"))
         self.dry.setChecked(settings.organizer.dry_run)
+        # FIX: состояние автозапуска берём из реестра (источник правды),
+        # а не из сохранённой конфигурации.
         self.autostart = QCheckBox(t("Запускать вместе с Windows"))
-        self.autostart.setChecked(settings.autostart)
+        self.autostart.setChecked(autostart_enabled())
+        self.autostart_status = _muted(t("settings.autostart.on") if autostart_enabled() else t("settings.autostart.off"))
         self.excluded = QLineEdit("; ".join(settings.organizer.excluded_dirs))
 
         form.addRow(t("Тема:"), self.theme)
@@ -276,6 +281,25 @@ class SettingsPage(_Page):
         form.addRow("", self.autostart)
         form.addRow(t("Не трогать папки:"), self.excluded)
 
+        # --- отдельная плашка «Язык»: применяется сразу, без «Сохранить» ---
+        lang_box = QFrame()
+        lang_box.setObjectName("LangPlate")
+        lang_lay = QHBoxLayout(lang_box)
+        lang_lay.setContentsMargins(14, 10, 14, 10)
+        lang_lay.setSpacing(14)
+        lang_title = QLabel(t("settings.language"))
+        lang_title.setObjectName("Heading")
+        self.language = QComboBox()
+        self.language.addItem("Русский", "ru")
+        self.language.addItem("English", "en")
+        self.language.setCurrentIndex(1 if prefs.language == "en" else 0)
+        lang_lay.addWidget(lang_title)
+        lang_lay.addWidget(self.language)
+        lang_hint = _muted(t("settings.language.hint"))
+        lang_hint.setWordWrap(True)
+        lang_lay.addWidget(lang_hint, 1)
+        self.language.currentIndexChanged.connect(self._apply_language)
+
         self.error = _muted("")
         self.save_btn = QPushButton(t("Сохранить"))
         self.save_btn.setObjectName("Primary")
@@ -288,10 +312,22 @@ class SettingsPage(_Page):
         bar.addStretch()
 
         self.root.addLayout(form)
-        self.root.addWidget(_muted(t("Автозапуск применится после перезапуска.")))
+        self.root.addWidget(lang_box)
+        self.root.addWidget(self.autostart_status)
         self.root.addWidget(self.error)
         self.root.addLayout(bar)
         self.root.addStretch()
+
+    def _apply_language(self, index: int = -1) -> None:
+        """Смена языка сразу: сохранить выбор и пересобрать интерфейс."""
+        lang = self.language.currentData()
+        if not lang:
+            return
+        self.prefs.language = lang
+        set_language(lang)
+        save_prefs(self.prefs)
+        if self.on_language_changed is not None:
+            self.on_language_changed()
 
     def _reset_look(self) -> None:
         d = UiPrefs()
@@ -313,7 +349,15 @@ class SettingsPage(_Page):
         self.settings.organizer.dry_run = self.dry.isChecked()
         self.settings.organizer.excluded_dirs = [s.strip() for s in self.excluded.text().split(";") if s.strip()]
         self.settings.autostart = self.autostart.isChecked()
-        set_autostart(self.settings.autostart)
+        # FIX: результат автозапуска показываем пользователю (раньше ошибка
+        # терялась и настройка «не работала» молча).
+        if not set_autostart(self.settings.autostart):
+            hint = "%APPDATA%\\AutoUtil\\logs\\autoutil.log"
+            self.error.setText(t("settings.autostart.fail", hint=hint))
+        else:
+            self.autostart_status.setText(
+                t("settings.autostart.on" if self.settings.autostart else "settings.autostart.off")
+            )
         save_settings(self.settings)
 
         self.on_prefs_changed(self.prefs)
