@@ -180,13 +180,11 @@ def test_deferred_store_picks_up_legacy_file(tmp_path, monkeypatch):
     from core import deferred as deferred_mod
     from core.journal_db import JournalDB
 
-    db_path = tmp_path / "journal.sqlite"
-    monkeypatch.setattr(deferred_mod, "JournalDB", lambda: JournalDB(db_path))
     monkeypatch.setattr(deferred_mod, "APP_DIR", tmp_path)
 
     _write(tmp_path / "deferred.json", [_entry(src="legacy.pdf", dst="C:/Docs")])
 
-    store = deferred_mod.DeferredStore()
+    store = deferred_mod.DeferredStore(JournalDB(tmp_path / "journal.sqlite"))
     items = store.all_items()
 
     assert [i.src for i in items] == ["legacy.pdf"]

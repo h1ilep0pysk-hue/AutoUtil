@@ -28,6 +28,7 @@ import modules.organizer.service as service_mod
 from core.config import OrganizerSettings
 from core.deferred import DeferredStore
 from core.journal import Journal
+from core.journal_db import JournalDB
 from core.pending import PendingStore
 from core.state import state
 from modules.organizer.learning import Learned
@@ -59,7 +60,7 @@ def _service(tmp_path: Path, home: Path, monkeypatch,
         recorder,
     )
     service.pending = PendingStore(tmp_path / "pending.json")
-    service.deferred = DeferredStore(tmp_path / "deferred.json")
+    service.deferred = DeferredStore(JournalDB(tmp_path / "journal.sqlite"))
     service.learned = Learned(tmp_path / "learned.json")
     service.base = home
     return service, recorder
