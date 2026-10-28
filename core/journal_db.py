@@ -5,6 +5,7 @@ Replaces the legacy JSONL journal.
 
 import json
 import logging
+import shutil
 import sqlite3
 import weakref
 from dataclasses import asdict, dataclass
@@ -83,6 +84,42 @@ class MoveEntry:
         )
 
 
+def _backup_before_migration(db_path: Path) -> Path | None:
+    """Copy the database file before a deferred schema migration.
+
+    Returns the backup path when a legacy schema (``path``/``action`` columns)
+    was detected and the copy succeeded, or ``None`` when no migration is
+    needed (current schema, absent table, or an in-memory database).
+
+    Never runs without making the copy: if the copy fails, a RuntimeError is
+    raised and the caller must not proceed with the migration. An existing
+    backup is never overwritten — a timestamp suffix is appended instead.
+    """
+    if str(db_path) == ":memory:":
+        return None
+    conn = sqlite3.connect(str(db_path))
+    try:
+        # Flush the WAL so the copy contains all committed rows.
+        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(deferred)")}
+    finally:
+        conn.close()
+    if "path" not in cols and "action" not in cols:
+        return None
+    backup = db_path.with_name(db_path.name + ".pre-migration.bak")
+    if backup.exists():
+        stamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        backup = db_path.with_name(f"{db_path.name}.pre-migration.bak.{stamp}")
+    try:
+        shutil.copy2(str(db_path), str(backup))
+    except OSError as exc:
+        raise RuntimeError(
+            f"Cannot create backup {backup} before deferred schema migration: "
+            f"{exc}. Migration aborted to protect data."
+        ) from exc
+    return backup
+
+
 class JournalDB:
     """Append‑only journal stored in SQLite.
 
@@ -108,6 +145,26 @@ class JournalDB:
         cur = self.conn.cursor()
         cur.execute("SELECT 1 FROM moves LIMIT 1")
         return cur.fetchone() is None
+
+    # ---------------------------------------------------------------------
+    # meta table (key/value flags, e.g. one-time migration markers)
+    # ---------------------------------------------------------------------
+    def get_meta(self, key: str) -> str | None:
+        """Return the value stored for *key* in meta, or None."""
+        cur = self.conn.cursor()
+        cur.execute("SELECT value FROM meta WHERE key = ?", (key,))
+        row = cur.fetchone()
+        return row["value"] if row else None
+
+    def set_meta(self, key: str, value: str) -> None:
+        """Insert or update a meta flag."""
+        cur = self.conn.cursor()
+        cur.execute(
+            "INSERT INTO meta (key, value) VALUES (?, ?) "
+            "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            (key, value),
+        )
+        self.conn.commit()
 
 
     # ---------------------------------------------------------------------
@@ -147,6 +204,13 @@ class JournalDB:
         )
         # deferred table (future version – created now for simplicity)
         cur.execute(_DEFERRED_SCHEMA_SQL.format(name="IF NOT EXISTS deferred"))
+        # Back up the db file before touching the schema; the migration runs
+        # only if the backup succeeded (returns a path) or was not needed
+        # (returns None for the current schema or an in-memory db). A failed
+        # copy raises and the migration is never reached.
+        backup = _backup_before_migration(self.path)
+        if backup is not None:
+            log.info("Backed up journal db to %s before schema migration", backup)
         # Upgrade a legacy deferred table (with path/action columns) in place.
         self._migrate_deferred_schema(cur)
         # Ensure new columns exist (migration from older schema with only 'path' column)
