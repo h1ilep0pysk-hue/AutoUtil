@@ -6,7 +6,6 @@ the ``deferred`` table in ``journal.sqlite`` via :class:`core.journal_db.Journal
 
 import threading
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import List, Optional
 
 from core.config import APP_DIR
@@ -69,10 +68,8 @@ class DeferredItem:
 
 
 class DeferredStore:
-    def __init__(self, path: Path | None = None) -> None:
-        # ``path`` is kept for backward compatibility with legacy JSON usage.
-        # SQLite storage is always used; the path argument is ignored.
-        self._db = JournalDB()
+    def __init__(self, db: JournalDB | None = None) -> None:
+        self._db = db if db is not None else JournalDB()
 
     def _ensure_migrated(self) -> None:
         # Must be called while holding _deferred_lock.
