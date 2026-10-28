@@ -315,10 +315,17 @@ class JournalDB:
     # ---------------------------------------------------------------------
     # Deferred actions API (SQLite based)
     # ---------------------------------------------------------------------
-    def add_deferred(self, src: str, dst: str, rule: str, days: int, ask: bool = False, bin: bool = False) -> int:
+    def add_deferred(self, src: str, dst: str, rule: str, days: int, ask: bool = False, bin: bool = False,
+                     due_ts: str | None = None, status: str = "pending", created_ts: str | None = None) -> int:
         """Insert a deferred action and return its row id."""
-        now = datetime.now(timezone.utc)
-        due = now + timedelta(days=days)
+        created = created_ts if created_ts is not None else datetime.now(timezone.utc).isoformat()
+        if due_ts is not None:
+            due = due_ts
+        else:
+            created_dt = datetime.fromisoformat(created)
+            if created_dt.tzinfo is None:
+                created_dt = created_dt.replace(tzinfo=timezone.utc)
+            due = (created_dt + timedelta(days=days)).isoformat()
         cur = self.conn.cursor()
         cur.execute(
             "INSERT INTO deferred (path, src, dst, rule, days, ask, bin, action, due_ts, status, created_ts) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -331,9 +338,9 @@ class JournalDB:
                 int(ask),
                 int(bin),
                 "",
-                due.isoformat(),
-                'pending',
-                now.isoformat(),
+                due,
+                status,
+                created,
             ),
         )
         self.conn.commit()
