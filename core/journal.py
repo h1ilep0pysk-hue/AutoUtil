@@ -6,6 +6,7 @@ from dataclasses import asdict, dataclass, fields
 from datetime import datetime, timezone
 from pathlib import Path
 from threading import RLock
+import weakref
 
 from platformdirs import user_data_dir
 
@@ -80,6 +81,10 @@ class Journal:
         db_path = path.parent / "journal.sqlite"
         self._db = JournalDB(path=db_path)
         self._lock = RLock()
+        # Close the SQLite connection when this object is collected;
+        # otherwise the connection is finalized unclosed and emits a
+        # ResourceWarning under -W error.
+        weakref.finalize(self, self._db.conn.close)
         # Perform migration if legacy file exists and DB has no moves
         if self.path.exists() and self._db.is_empty():
             self._migrate_from_jsonl()
