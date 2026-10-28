@@ -6,6 +6,7 @@ Replaces the legacy JSONL journal.
 import json
 import logging
 import sqlite3
+import weakref
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -62,11 +63,16 @@ class JournalDB:
     from the legacy JSONL file if it exists and the SQLite file does not.
     """
 
-    def __init__(self, path: Path = JOURNAL_DB_PATH) -> None:
-        self.path = path
+    def __init__(self, path: Path | None = None) -> None:
+        # Resolved at call time so tests can patch JOURNAL_DB_PATH.
+        self.path = path if path is not None else JOURNAL_DB_PATH
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.conn = sqlite3.connect(str(self.path))
         self.conn.row_factory = sqlite3.Row
+        # Close the SQLite connection when this object is collected;
+        # otherwise the connection is finalized unclosed and emits a
+        # ResourceWarning under -W error.
+        weakref.finalize(self, self.conn.close)
         self._setup()
         self._maybe_migrate()
 
@@ -178,7 +184,7 @@ class JournalDB:
     # Migration from legacy JSONL journal
     # ---------------------------------------------------------------------
     def _maybe_migrate(self) -> None:
-        legacy_path = Path(user_data_dir("AutoUtil", appauthor=False)) / "journal.jsonl"
+        legacy_path = JOURNAL_DB_PATH.parent / "journal.jsonl"
         if not legacy_path.exists():
             return
         if self.path.exists():
