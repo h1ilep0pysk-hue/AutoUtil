@@ -1,0 +1,1549 @@
+{
+  "nodes": [
+    {
+      "id": "n001",
+      "kind": "source",
+      "title": "Загрузки",
+      "x": -1500,
+      "y": -1950,
+      "params": {
+        "folder": "C:\\Users\\h1ile\\Downloads"
+      }
+    },
+    {
+      "id": "n002",
+      "kind": "source",
+      "title": "Рабочий стол",
+      "x": -1500,
+      "y": -1750,
+      "params": {
+        "folder": "C:\\Users\\h1ile\\Desktop"
+      }
+    },
+    {
+      "id": "n003",
+      "kind": "source",
+      "title": "Документы (OneDrive)",
+      "x": -1500,
+      "y": -1550,
+      "params": {
+        "folder": "C:\\Users\\h1ile\\OneDrive\\Документы"
+      }
+    },
+    {
+      "id": "n004",
+      "kind": "source",
+      "title": "Видео",
+      "x": -1500,
+      "y": -1350,
+      "params": {
+        "folder": "C:\\Users\\h1ile\\Videos"
+      }
+    },
+    {
+      "id": "n005",
+      "kind": "source",
+      "title": "Снимки экрана",
+      "x": -1500,
+      "y": -1150,
+      "params": {
+        "folder": "C:\\Users\\h1ile\\OneDrive\\Изображения\\Снимки экрана"
+      }
+    },
+    {
+      "id": "n006",
+      "kind": "exclude",
+      "title": "Служебные — не трогать",
+      "x": -1150,
+      "y": -1850,
+      "params": {
+        "masks": [
+          "*.crdownload",
+          "*.part",
+          "*.opdownload",
+          "*.download",
+          "desktop.ini",
+          "Thumbs.db",
+          "~$*",
+          "*.dll",
+          "*.lnk",
+          "*.lib",
+          "*.pdb",
+          "*.sys",
+          "*.ocx",
+          "node_modules",
+          ".git",
+          ".DS_Store"
+        ]
+      }
+    },
+    {
+      "id": "n007",
+      "kind": "bin",
+      "title": "Корзина: старые скриншоты",
+      "x": 1000,
+      "y": -1600,
+      "params": {}
+    },
+    {
+      "id": "n008",
+      "kind": "bin",
+      "title": "Корзина: старые установщики",
+      "x": 1000,
+      "y": -830,
+      "params": {}
+    },
+    {
+      "id": "n009",
+      "kind": "bin",
+      "title": "Корзина: мусор",
+      "x": 1000,
+      "y": -720,
+      "params": {}
+    },
+    {
+      "id": "n010",
+      "kind": "bin",
+      "title": "Корзина: старые торренты",
+      "x": 1000,
+      "y": -610,
+      "params": {}
+    },
+    {
+      "id": "n011",
+      "kind": "bin",
+      "title": "Корзина: старьё",
+      "x": 1000,
+      "y": 2580,
+      "params": {}
+    },
+    {
+      "id": "n012",
+      "kind": "ask",
+      "title": "Спросить перед корзиной",
+      "x": -50,
+      "y": 2580,
+      "params": {}
+    },
+    {
+      "id": "n013",
+      "kind": "ask",
+      "title": "Спросить: разобрать",
+      "x": -50,
+      "y": 2690,
+      "params": {}
+    },
+    {
+      "id": "n014",
+      "kind": "target",
+      "title": "Скриншоты → Изображения/Снимки экрана/{year}",
+      "x": 550,
+      "y": -1380,
+      "params": {
+        "folder": "Изображения/Снимки экрана/{year}"
+      }
+    },
+    {
+      "id": "n015",
+      "kind": "target",
+      "title": "Установщики",
+      "x": 550,
+      "y": -720,
+      "params": {
+        "folder": "C:\\Users\\h1ile\\Downloads\\Установщики"
+      }
+    },
+    {
+      "id": "n016",
+      "kind": "target",
+      "title": "Торренты",
+      "x": 550,
+      "y": -390,
+      "params": {
+        "folder": "C:\\Users\\h1ile\\Downloads\\Торренты"
+      }
+    },
+    {
+      "id": "n017",
+      "kind": "target",
+      "title": "Чит-таблицы → Документы/My Cheat Tables",
+      "x": 550,
+      "y": -280,
+      "params": {
+        "folder": "Документы/My Cheat Tables"
+      }
+    },
+    {
+      "id": "n018",
+      "kind": "target",
+      "title": "Игровые файлы",
+      "x": 550,
+      "y": -170,
+      "params": {
+        "folder": "C:\\Users\\h1ile\\Downloads\\Игровые файлы"
+      }
+    },
+    {
+      "id": "n019",
+      "kind": "target",
+      "title": "Архивы",
+      "x": 550,
+      "y": 50,
+      "params": {
+        "folder": "C:\\Users\\h1ile\\Downloads\\arhive"
+      }
+    },
+    {
+      "id": "n020",
+      "kind": "target",
+      "title": "Видео",
+      "x": 550,
+      "y": 270,
+      "params": {
+        "folder": "C:\\Users\\h1ile\\Downloads\\video"
+      }
+    },
+    {
+      "id": "n021",
+      "kind": "target",
+      "title": "Музыка",
+      "x": 550,
+      "y": 380,
+      "params": {
+        "folder": "C:\\Users\\h1ile\\Downloads\\audio"
+      }
+    },
+    {
+      "id": "n022",
+      "kind": "target",
+      "title": "Фото",
+      "x": 550,
+      "y": 490,
+      "params": {
+        "folder": "C:\\Users\\h1ile\\Downloads\\photo"
+      }
+    },
+    {
+      "id": "n023",
+      "kind": "target",
+      "title": "3D-модели",
+      "x": 550,
+      "y": 600,
+      "params": {
+        "folder": "C:\\Users\\h1ile\\Downloads\\3D-модели"
+      }
+    },
+    {
+      "id": "n024",
+      "kind": "target",
+      "title": "Презентации",
+      "x": 550,
+      "y": 710,
+      "params": {
+        "folder": "C:\\Users\\h1ile\\Downloads\\presentation"
+      }
+    },
+    {
+      "id": "n025",
+      "kind": "target",
+      "title": "PDF → Документы/PDF/{year}",
+      "x": 550,
+      "y": 820,
+      "params": {
+        "folder": "Документы/PDF/{year}"
+      }
+    },
+    {
+      "id": "n026",
+      "kind": "target",
+      "title": "Word → Документы/Word/{year}",
+      "x": 550,
+      "y": 930,
+      "params": {
+        "folder": "Документы/Word/{year}"
+      }
+    },
+    {
+      "id": "n027",
+      "kind": "target",
+      "title": "Таблицы → Документы/Таблицы/{year}",
+      "x": 550,
+      "y": 1040,
+      "params": {
+        "folder": "Документы/Таблицы/{year}"
+      }
+    },
+    {
+      "id": "n028",
+      "kind": "target",
+      "title": "Книги",
+      "x": 550,
+      "y": 1150,
+      "params": {
+        "folder": "C:\\Users\\h1ile\\Downloads\\Книги"
+      }
+    },
+    {
+      "id": "n029",
+      "kind": "target",
+      "title": "Код",
+      "x": 550,
+      "y": 1260,
+      "params": {
+        "folder": "C:\\Users\\h1ile\\Downloads\\Код"
+      }
+    },
+    {
+      "id": "n030",
+      "kind": "target",
+      "title": "ИИ-модели",
+      "x": 550,
+      "y": 1370,
+      "params": {
+        "folder": "C:\\Users\\h1ile\\Downloads\\ИИ-модели"
+      }
+    },
+    {
+      "id": "n031",
+      "kind": "target",
+      "title": "Шрифты",
+      "x": 550,
+      "y": 1480,
+      "params": {
+        "folder": "C:\\Users\\h1ile\\Downloads\\Шрифты"
+      }
+    },
+    {
+      "id": "n032",
+      "kind": "target",
+      "title": "Образы дисков",
+      "x": 550,
+      "y": 1700,
+      "params": {
+        "folder": "C:\\Users\\h1ile\\Downloads\\Образы дисков"
+      }
+    },
+    {
+      "id": "n033",
+      "kind": "target",
+      "title": "Приложения Android",
+      "x": 550,
+      "y": 1920,
+      "params": {
+        "folder": "C:\\Users\\h1ile\\Downloads\\APK"
+      }
+    },
+    {
+      "id": "n034",
+      "kind": "target",
+      "title": "Скрипты",
+      "x": 550,
+      "y": 2030,
+      "params": {
+        "folder": "C:\\Users\\h1ile\\Downloads\\Скрипты"
+      }
+    },
+    {
+      "id": "n035",
+      "kind": "target",
+      "title": "Конфиги",
+      "x": 550,
+      "y": 2140,
+      "params": {
+        "folder": "C:\\Users\\h1ile\\Downloads\\Конфиги"
+      }
+    },
+    {
+      "id": "n036",
+      "kind": "target",
+      "title": "Веб и дизайн",
+      "x": 550,
+      "y": 2250,
+      "params": {
+        "folder": "C:\\Users\\h1ile\\Downloads\\Веб и дизайн"
+      }
+    },
+    {
+      "id": "n037",
+      "kind": "target",
+      "title": "Скиллы",
+      "x": 550,
+      "y": 2360,
+      "params": {
+        "folder": "C:\\Users\\h1ile\\Downloads\\skill"
+      }
+    },
+    {
+      "id": "n038",
+      "kind": "target",
+      "title": "Тексты и заметки",
+      "x": 550,
+      "y": 2470,
+      "params": {
+        "folder": "C:\\Users\\h1ile\\Downloads\\Тексты"
+      }
+    },
+    {
+      "id": "n039",
+      "kind": "target",
+      "title": "Разобрать",
+      "x": 550,
+      "y": 2690,
+      "params": {
+        "folder": "C:\\Users\\h1ile\\Downloads\\Разобрать"
+      }
+    },
+    {
+      "id": "n040",
+      "kind": "filter",
+      "title": "Скриншоты 30+ (Снимок экрана) — в корзину",
+      "x": -750,
+      "y": -1600,
+      "params": {
+        "exts": [
+          ".png",
+          ".jpg"
+        ],
+        "name_glob": "Снимок экрана*",
+        "min_age_days": 30
+      }
+    },
+    {
+      "id": "n041",
+      "kind": "delay",
+      "title": "Ждать 30 дней",
+      "x": -400,
+      "y": -1600,
+      "params": {
+        "days": 30
+      }
+    },
+    {
+      "id": "n042",
+      "kind": "filter",
+      "title": "Скриншоты (Снимок экрана) — в Изображения",
+      "x": -750,
+      "y": -1490,
+      "params": {
+        "exts": [
+          ".png",
+          ".jpg"
+        ],
+        "name_glob": "Снимок экрана*"
+      }
+    },
+    {
+      "id": "n043",
+      "kind": "filter",
+      "title": "Скриншоты 30+ (Screenshot) — в корзину",
+      "x": -750,
+      "y": -1380,
+      "params": {
+        "exts": [
+          ".png"
+        ],
+        "name_glob": "Screenshot*",
+        "min_age_days": 30
+      }
+    },
+    {
+      "id": "n044",
+      "kind": "delay",
+      "title": "Ждать 30 дней",
+      "x": -400,
+      "y": -1380,
+      "params": {
+        "days": 30
+      }
+    },
+    {
+      "id": "n045",
+      "kind": "filter",
+      "title": "Скриншоты (Screenshot) — в Изображения",
+      "x": -750,
+      "y": -1270,
+      "params": {
+        "exts": [
+          ".png"
+        ],
+        "name_glob": "Screenshot*"
+      }
+    },
+    {
+      "id": "n046",
+      "kind": "filter",
+      "title": "Скриншоты 30+ (цифровые имена Steam) — в корзину",
+      "x": -750,
+      "y": -1160,
+      "params": {
+        "exts": [
+          ".png",
+          ".jpg"
+        ],
+        "name_regex": "^\\d{14}_\\d+|^\\d{4}-\\d{2}-\\d{2}",
+        "min_age_days": 30
+      }
+    },
+    {
+      "id": "n047",
+      "kind": "delay",
+      "title": "Ждать 30 дней",
+      "x": -400,
+      "y": -1160,
+      "params": {
+        "days": 30
+      }
+    },
+    {
+      "id": "n048",
+      "kind": "filter",
+      "title": "Скриншоты (цифровые имена) — в Изображения",
+      "x": -750,
+      "y": -1050,
+      "params": {
+        "exts": [
+          ".png",
+          ".jpg"
+        ],
+        "name_regex": "^\\d{14}_\\d+|^\\d{4}-\\d{2}-\\d{2}"
+      }
+    },
+    {
+      "id": "n049",
+      "kind": "filter",
+      "title": "Установщики 30+ — в корзину",
+      "x": -750,
+      "y": -940,
+      "params": {
+        "exts": [
+          ".exe",
+          ".msi",
+          ".msix",
+          ".appx"
+        ],
+        "min_age_days": 30
+      }
+    },
+    {
+      "id": "n050",
+      "kind": "delay",
+      "title": "Ждать 30 дней",
+      "x": -400,
+      "y": -940,
+      "params": {
+        "days": 30
+      }
+    },
+    {
+      "id": "n051",
+      "kind": "filter",
+      "title": "Установщики — в папку",
+      "x": -750,
+      "y": -830,
+      "params": {
+        "exts": [
+          ".exe",
+          ".msi",
+          ".msix",
+          ".appx"
+        ]
+      }
+    },
+    {
+      "id": "n052",
+      "kind": "filter",
+      "title": "Мусор и логи 7+ — в корзину",
+      "x": -750,
+      "y": -720,
+      "params": {
+        "exts": [
+          ".tmp",
+          ".log",
+          ".bak",
+          ".old",
+          ".dmp"
+        ],
+        "min_age_days": 7
+      }
+    },
+    {
+      "id": "n053",
+      "kind": "filter",
+      "title": "Торренты 30+ — в корзину",
+      "x": -750,
+      "y": -610,
+      "params": {
+        "exts": [
+          ".torrent"
+        ],
+        "min_age_days": 30
+      }
+    },
+    {
+      "id": "n054",
+      "kind": "delay",
+      "title": "Ждать 30 дней",
+      "x": -400,
+      "y": -610,
+      "params": {
+        "days": 30
+      }
+    },
+    {
+      "id": "n055",
+      "kind": "filter",
+      "title": "Торренты — в папку",
+      "x": -750,
+      "y": -500,
+      "params": {
+        "exts": [
+          ".torrent"
+        ]
+      }
+    },
+    {
+      "id": "n056",
+      "kind": "filter",
+      "title": "Чит-таблицы (.ct) — в Документы",
+      "x": -750,
+      "y": -390,
+      "params": {
+        "exts": [
+          ".ct"
+        ]
+      }
+    },
+    {
+      "id": "n057",
+      "kind": "filter",
+      "title": "Игровые файлы (.pak, Minecraft)",
+      "x": -750,
+      "y": -280,
+      "params": {
+        "exts": [
+          ".pak",
+          ".mcpack",
+          ".mcaddon",
+          ".mcworld",
+          ".mcproject",
+          ".mcstructure"
+        ]
+      }
+    },
+    {
+      "id": "n058",
+      "kind": "filter",
+      "title": "Архивы 180+ — спросить",
+      "x": -750,
+      "y": -170,
+      "params": {
+        "exts": [
+          ".zip",
+          ".rar",
+          ".7z",
+          ".tar",
+          ".gz",
+          ".bz2",
+          ".xz",
+          ".jar"
+        ],
+        "min_age_days": 180
+      }
+    },
+    {
+      "id": "n059",
+      "kind": "filter",
+      "title": "Архивы",
+      "x": -750,
+      "y": -60,
+      "params": {
+        "exts": [
+          ".zip",
+          ".rar",
+          ".7z",
+          ".tar",
+          ".gz",
+          ".bz2",
+          ".xz",
+          ".jar"
+        ]
+      }
+    },
+    {
+      "id": "n060",
+      "kind": "filter",
+      "title": "Видео 180+ — спросить",
+      "x": -750,
+      "y": 50,
+      "params": {
+        "exts": [
+          ".mp4",
+          ".mkv",
+          ".mov",
+          ".avi",
+          ".webm",
+          ".wmv",
+          ".m4v"
+        ],
+        "min_age_days": 180
+      }
+    },
+    {
+      "id": "n061",
+      "kind": "filter",
+      "title": "Видео",
+      "x": -750,
+      "y": 160,
+      "params": {
+        "exts": [
+          ".mp4",
+          ".mkv",
+          ".mov",
+          ".avi",
+          ".webm",
+          ".wmv",
+          ".m4v"
+        ]
+      }
+    },
+    {
+      "id": "n062",
+      "kind": "filter",
+      "title": "Музыка",
+      "x": -750,
+      "y": 270,
+      "params": {
+        "exts": [
+          ".mp3",
+          ".wav",
+          ".flac",
+          ".ogg",
+          ".m4a",
+          ".aac",
+          ".opus"
+        ]
+      }
+    },
+    {
+      "id": "n063",
+      "kind": "filter",
+      "title": "Фото",
+      "x": -750,
+      "y": 380,
+      "params": {
+        "exts": [
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".webp",
+          ".avif",
+          ".heic",
+          ".bmp",
+          ".gif",
+          ".tif",
+          ".tiff"
+        ]
+      }
+    },
+    {
+      "id": "n064",
+      "kind": "filter",
+      "title": "3D-модели",
+      "x": -750,
+      "y": 490,
+      "params": {
+        "exts": [
+          ".fbx",
+          ".glb",
+          ".gltf",
+          ".obj",
+          ".stl",
+          ".blend",
+          ".dae"
+        ]
+      }
+    },
+    {
+      "id": "n065",
+      "kind": "filter",
+      "title": "Презентации",
+      "x": -750,
+      "y": 600,
+      "params": {
+        "exts": [
+          ".ppt",
+          ".pptx",
+          ".odp",
+          ".pps"
+        ]
+      }
+    },
+    {
+      "id": "n066",
+      "kind": "filter",
+      "title": "PDF-документы",
+      "x": -750,
+      "y": 710,
+      "params": {
+        "exts": [
+          ".pdf"
+        ]
+      }
+    },
+    {
+      "id": "n067",
+      "kind": "filter",
+      "title": "Документы Word",
+      "x": -750,
+      "y": 820,
+      "params": {
+        "exts": [
+          ".doc",
+          ".docx",
+          ".odt",
+          ".rtf"
+        ]
+      }
+    },
+    {
+      "id": "n068",
+      "kind": "filter",
+      "title": "Таблицы",
+      "x": -750,
+      "y": 930,
+      "params": {
+        "exts": [
+          ".xls",
+          ".xlsx",
+          ".ods",
+          ".csv"
+        ]
+      }
+    },
+    {
+      "id": "n069",
+      "kind": "filter",
+      "title": "Книги",
+      "x": -750,
+      "y": 1040,
+      "params": {
+        "exts": [
+          ".fb2",
+          ".epub",
+          ".mobi",
+          ".azw3",
+          ".azw",
+          ".djvu"
+        ]
+      }
+    },
+    {
+      "id": "n070",
+      "kind": "filter",
+      "title": "Код",
+      "x": -750,
+      "y": 1150,
+      "params": {
+        "exts": [
+          ".py",
+          ".ipynb",
+          ".js",
+          ".ts",
+          ".jsx",
+          ".tsx",
+          ".java",
+          ".c",
+          ".cpp",
+          ".h",
+          ".hpp",
+          ".cs",
+          ".go",
+          ".rs",
+          ".kt",
+          ".swift",
+          ".php",
+          ".lua",
+          ".spec"
+        ]
+      }
+    },
+    {
+      "id": "n071",
+      "kind": "filter",
+      "title": "ИИ-модели",
+      "x": -750,
+      "y": 1260,
+      "params": {
+        "exts": [
+          ".pt",
+          ".onnx",
+          ".pkl",
+          ".h5",
+          ".safetensors",
+          ".gguf"
+        ]
+      }
+    },
+    {
+      "id": "n072",
+      "kind": "filter",
+      "title": "Шрифты",
+      "x": -750,
+      "y": 1370,
+      "params": {
+        "exts": [
+          ".ttf",
+          ".otf",
+          ".woff",
+          ".woff2",
+          ".fon"
+        ]
+      }
+    },
+    {
+      "id": "n073",
+      "kind": "filter",
+      "title": "Образы 180+ — спросить",
+      "x": -750,
+      "y": 1480,
+      "params": {
+        "exts": [
+          ".iso",
+          ".img",
+          ".vhd",
+          ".vhdx",
+          ".mdf",
+          ".nrg",
+          ".bin"
+        ],
+        "min_age_days": 180
+      }
+    },
+    {
+      "id": "n074",
+      "kind": "filter",
+      "title": "Образы дисков",
+      "x": -750,
+      "y": 1590,
+      "params": {
+        "exts": [
+          ".iso",
+          ".img",
+          ".vhd",
+          ".vhdx",
+          ".mdf",
+          ".nrg",
+          ".bin"
+        ]
+      }
+    },
+    {
+      "id": "n075",
+      "kind": "filter",
+      "title": "Приложения Android 180+ — спросить",
+      "x": -750,
+      "y": 1700,
+      "params": {
+        "exts": [
+          ".apk",
+          ".xapk",
+          ".apks"
+        ],
+        "min_age_days": 180
+      }
+    },
+    {
+      "id": "n076",
+      "kind": "filter",
+      "title": "Приложения Android",
+      "x": -750,
+      "y": 1810,
+      "params": {
+        "exts": [
+          ".apk",
+          ".xapk",
+          ".apks"
+        ]
+      }
+    },
+    {
+      "id": "n077",
+      "kind": "filter",
+      "title": "Скрипты",
+      "x": -750,
+      "y": 1920,
+      "params": {
+        "exts": [
+          ".bat",
+          ".cmd",
+          ".ps1",
+          ".sh",
+          ".reg",
+          ".vbs",
+          ".ahk"
+        ]
+      }
+    },
+    {
+      "id": "n078",
+      "kind": "filter",
+      "title": "Конфиги",
+      "x": -750,
+      "y": 2030,
+      "params": {
+        "exts": [
+          ".json",
+          ".xml",
+          ".yaml",
+          ".yml",
+          ".toml",
+          ".env",
+          ".cfg",
+          ".conf",
+          ".lock",
+          ".vcfg",
+          ".example"
+        ]
+      }
+    },
+    {
+      "id": "n079",
+      "kind": "filter",
+      "title": "Веб и дизайн",
+      "x": -750,
+      "y": 2140,
+      "params": {
+        "exts": [
+          ".html",
+          ".htm",
+          ".css",
+          ".svg",
+          ".ico",
+          ".gpl"
+        ]
+      }
+    },
+    {
+      "id": "n080",
+      "kind": "filter",
+      "title": "Скиллы CapCut (.skill)",
+      "x": -750,
+      "y": 2250,
+      "params": {
+        "exts": [
+          ".skill"
+        ]
+      }
+    },
+    {
+      "id": "n081",
+      "kind": "filter",
+      "title": "Скиллы (MD со словом SKILL)",
+      "x": -750,
+      "y": 2360,
+      "params": {
+        "exts": [
+          ".md"
+        ],
+        "keywords": [
+          "SKILL"
+        ]
+      }
+    },
+    {
+      "id": "n082",
+      "kind": "filter",
+      "title": "Тексты и заметки",
+      "x": -750,
+      "y": 2470,
+      "params": {
+        "exts": [
+          ".txt",
+          ".md"
+        ]
+      }
+    },
+    {
+      "id": "n083",
+      "kind": "filter",
+      "title": "Прочее 90+ дней — спросить",
+      "x": -750,
+      "y": 2580,
+      "params": {
+        "min_age_days": 90
+      }
+    },
+    {
+      "id": "n084",
+      "kind": "filter",
+      "title": "Прочее 30+ дней — на разбор",
+      "x": -750,
+      "y": 2690,
+      "params": {
+        "min_age_days": 30
+      }
+    }
+  ],
+  "edges": [
+    {
+      "src": "n001",
+      "dst": "n006",
+      "branch": "yes"
+    },
+    {
+      "src": "n002",
+      "dst": "n006",
+      "branch": "yes"
+    },
+    {
+      "src": "n003",
+      "dst": "n006",
+      "branch": "yes"
+    },
+    {
+      "src": "n004",
+      "dst": "n006",
+      "branch": "yes"
+    },
+    {
+      "src": "n005",
+      "dst": "n006",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n040",
+      "branch": "yes"
+    },
+    {
+      "src": "n040",
+      "dst": "n041",
+      "branch": "yes"
+    },
+    {
+      "src": "n041",
+      "dst": "n007",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n042",
+      "branch": "yes"
+    },
+    {
+      "src": "n042",
+      "dst": "n014",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n043",
+      "branch": "yes"
+    },
+    {
+      "src": "n043",
+      "dst": "n044",
+      "branch": "yes"
+    },
+    {
+      "src": "n044",
+      "dst": "n007",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n045",
+      "branch": "yes"
+    },
+    {
+      "src": "n045",
+      "dst": "n014",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n046",
+      "branch": "yes"
+    },
+    {
+      "src": "n046",
+      "dst": "n047",
+      "branch": "yes"
+    },
+    {
+      "src": "n047",
+      "dst": "n007",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n048",
+      "branch": "yes"
+    },
+    {
+      "src": "n048",
+      "dst": "n014",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n049",
+      "branch": "yes"
+    },
+    {
+      "src": "n049",
+      "dst": "n050",
+      "branch": "yes"
+    },
+    {
+      "src": "n050",
+      "dst": "n008",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n051",
+      "branch": "yes"
+    },
+    {
+      "src": "n051",
+      "dst": "n015",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n052",
+      "branch": "yes"
+    },
+    {
+      "src": "n052",
+      "dst": "n009",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n053",
+      "branch": "yes"
+    },
+    {
+      "src": "n053",
+      "dst": "n054",
+      "branch": "yes"
+    },
+    {
+      "src": "n054",
+      "dst": "n010",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n055",
+      "branch": "yes"
+    },
+    {
+      "src": "n055",
+      "dst": "n016",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n056",
+      "branch": "yes"
+    },
+    {
+      "src": "n056",
+      "dst": "n017",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n057",
+      "branch": "yes"
+    },
+    {
+      "src": "n057",
+      "dst": "n018",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n058",
+      "branch": "yes"
+    },
+    {
+      "src": "n058",
+      "dst": "n012",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n059",
+      "branch": "yes"
+    },
+    {
+      "src": "n059",
+      "dst": "n019",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n060",
+      "branch": "yes"
+    },
+    {
+      "src": "n060",
+      "dst": "n012",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n061",
+      "branch": "yes"
+    },
+    {
+      "src": "n061",
+      "dst": "n020",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n062",
+      "branch": "yes"
+    },
+    {
+      "src": "n062",
+      "dst": "n021",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n063",
+      "branch": "yes"
+    },
+    {
+      "src": "n063",
+      "dst": "n022",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n064",
+      "branch": "yes"
+    },
+    {
+      "src": "n064",
+      "dst": "n023",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n065",
+      "branch": "yes"
+    },
+    {
+      "src": "n065",
+      "dst": "n024",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n066",
+      "branch": "yes"
+    },
+    {
+      "src": "n066",
+      "dst": "n025",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n067",
+      "branch": "yes"
+    },
+    {
+      "src": "n067",
+      "dst": "n026",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n068",
+      "branch": "yes"
+    },
+    {
+      "src": "n068",
+      "dst": "n027",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n069",
+      "branch": "yes"
+    },
+    {
+      "src": "n069",
+      "dst": "n028",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n070",
+      "branch": "yes"
+    },
+    {
+      "src": "n070",
+      "dst": "n029",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n071",
+      "branch": "yes"
+    },
+    {
+      "src": "n071",
+      "dst": "n030",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n072",
+      "branch": "yes"
+    },
+    {
+      "src": "n072",
+      "dst": "n031",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n073",
+      "branch": "yes"
+    },
+    {
+      "src": "n073",
+      "dst": "n012",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n074",
+      "branch": "yes"
+    },
+    {
+      "src": "n074",
+      "dst": "n032",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n075",
+      "branch": "yes"
+    },
+    {
+      "src": "n075",
+      "dst": "n012",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n076",
+      "branch": "yes"
+    },
+    {
+      "src": "n076",
+      "dst": "n033",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n077",
+      "branch": "yes"
+    },
+    {
+      "src": "n077",
+      "dst": "n034",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n078",
+      "branch": "yes"
+    },
+    {
+      "src": "n078",
+      "dst": "n035",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n079",
+      "branch": "yes"
+    },
+    {
+      "src": "n079",
+      "dst": "n036",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n080",
+      "branch": "yes"
+    },
+    {
+      "src": "n080",
+      "dst": "n037",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n081",
+      "branch": "yes"
+    },
+    {
+      "src": "n081",
+      "dst": "n037",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n082",
+      "branch": "yes"
+    },
+    {
+      "src": "n082",
+      "dst": "n038",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n083",
+      "branch": "yes"
+    },
+    {
+      "src": "n083",
+      "dst": "n012",
+      "branch": "yes"
+    },
+    {
+      "src": "n006",
+      "dst": "n084",
+      "branch": "yes"
+    },
+    {
+      "src": "n084",
+      "dst": "n013",
+      "branch": "yes"
+    },
+    {
+      "src": "n012",
+      "dst": "n011",
+      "branch": "yes"
+    },
+    {
+      "src": "n013",
+      "dst": "n039",
+      "branch": "yes"
+    }
+  ]
+}
