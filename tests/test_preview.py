@@ -27,7 +27,10 @@ def test_preview_matches_by_ext_and_age(tmp_path):
     result = preview_rule(rule, folder, tmp_path)
     names = [p.name for p, _ in result.matches]
     assert names == ["old.log"]  # свежий .log и .png не подходят
-    assert result.matches[0][1] == "Корзина"  # у bin-правила папки-цели нет
+    # У bin-правила папки-цели нет, поэтому метка — «Корзина», а не путь.
+    # Сравниваем через t(), а не с русским литералом: литерал делал тест
+    # зависимым от глобального языка, который выставляют другие тесты.
+    assert result.matches[0][1] == t("preview.bin")
     assert result.total_files == 3
 
 

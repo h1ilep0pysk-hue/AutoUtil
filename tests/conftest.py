@@ -45,3 +45,20 @@ def isolated_app_dir(tmp_path, monkeypatch):
 
     monkeypatch.setattr(platformdirs, "user_data_dir", lambda *a, **kw: str(fake))
     yield
+
+
+@pytest.fixture(autouse=True)
+def restore_language():
+    """Keep the UI language from leaking between tests.
+
+    ``core.i18n.set_language()`` writes a module-level global, so a test that
+    switches to Russian leaves every later test in Russian. That made
+    tests/test_preview.py pass only because tests/test_naming.py runs
+    earlier in the alphabet: on its own it asserted a Russian label while
+    the process default is English.
+    """
+    from core.i18n import current_language, set_language
+
+    before = current_language()
+    yield
+    set_language(before)

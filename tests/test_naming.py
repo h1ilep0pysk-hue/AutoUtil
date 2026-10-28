@@ -1,4 +1,4 @@
-from core.i18n import set_language
+from core.i18n import current_language, set_language
 from modules.organizer.analyzer import Features
 from modules.organizer.naming import render_name
 
@@ -18,13 +18,16 @@ def test_render_template(tmp_path):
 
 def test_unknown_vendor_localized(tmp_path):
     f = feats(tmp_path, text="")
+    before = current_language()
     try:
         set_language("en")
         assert "unknown" in render_name("{date}_{vendor}.pdf", f)
         set_language("ru")
         assert "неизвестно" in render_name("{date}_{vendor}.pdf", f)
     finally:
-        set_language("ru")
+        # Возвращаем то, что было, а не жёстко «ru»: иначе язык протекает
+        # во все следующие тесты и они начинают зависеть от порядка запуска.
+        set_language(before)
 
 
 def test_bad_chars_sanitized_and_ext_kept(tmp_path):
