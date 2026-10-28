@@ -357,6 +357,11 @@ class SettingsPage(_Page):
         # а не из сохранённой конфигурации.
         self.autostart = QCheckBox(t("Запускать вместе с Windows"))
         self.autostart.setChecked(autostart_enabled())
+        # FIX: подпись о текущем состоянии автозапуска должна существовать —
+        # без неё SettingsPage падал с AttributeError при сборке.
+        self.autostart_status = _muted(
+            t("settings.autostart.on" if self.autostart.isChecked() else "settings.autostart.off")
+        )
         self.deferred_background = QCheckBox(t("settings.deferred_background"))
         self.deferred_background.setChecked(scheduler.is_task_installed())
         self.excluded = QLineEdit("; ".join(settings.organizer.excluded_dirs))
@@ -370,6 +375,8 @@ class SettingsPage(_Page):
         form.addRow(t("Строк в журнале:"), self.journal_limit)
         form.addRow(t("settings.journal_retention_label"), self.journal_retention)
         form.addRow("", self.dry)
+        form.addRow("", self.autostart)
+        form.addRow("", self.autostart_status)
         form.addRow("", self.deferred_background)
         form.addRow(t("Не трогать папки:"), self.excluded)
 
@@ -405,7 +412,6 @@ class SettingsPage(_Page):
 
         self.root.addLayout(form)
         self.root.addWidget(lang_box)
-        self.root.addWidget(self.autostart_status)
         self.root.addWidget(self.error)
         self.root.addLayout(bar)
         self.root.addStretch()

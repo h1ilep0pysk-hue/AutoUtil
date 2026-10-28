@@ -62,7 +62,18 @@ def build_task_xml(command: str, arguments: str, working_dir: Path, dev_mode: bo
 
 
 def _run_schtasks(args: list[str]) -> subprocess.CompletedProcess:
-    return subprocess.run(["schtasks"] + args, capture_output=True, text=False)
+    """Run schtasks, never raising.
+
+    ``schtasks`` may be missing, blocked by policy or denied by the OS. In
+    that case the callers must simply see a failed result instead of an
+    exception: a settings page must not crash because the Task Scheduler is
+    unavailable.
+    """
+    try:
+        return subprocess.run(["schtasks"] + args, capture_output=True, text=False)
+    except OSError:
+        return subprocess.CompletedProcess(["schtasks"] + args, returncode=1,
+                                           stdout=b"", stderr=b"")
 
 
 def install_task() -> bool:
