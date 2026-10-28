@@ -200,7 +200,12 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setattr(service_mod, "recycle", fake_recycle)
 
     recorder = Recorder()
-    service = OrganizerService(OrganizerSettings(dry_run=False), Journal(tmp_path / "j.jsonl"), recorder)
+    # Этап 3в: узел «Дубликаты» работает только после подтверждения в окне
+    # предпросмотра. Тесты ниже проверяют уже подтверждённый сценарий.
+    service = OrganizerService(
+        OrganizerSettings(dry_run=False, duplicates_confirmed=True),
+        Journal(tmp_path / "j.jsonl"), recorder,
+    )
     service.learned = Learned(tmp_path / "learned.json")
     service.base = home
 
@@ -311,3 +316,87 @@ def test_dry_run_only_notifies(env, tmp_path, monkeypatch):
     # файлы на месте — это только план
     assert a.exists() and b.exists()
     assert recorder2.notes  # уведомления-планы приходят
+
+
+def test_dedupe_blocked_until_confirmed(tmp_path, monkeypatch):
+    """Без подтверждения в окне предпросмотра узел работает как сухой прогон."""
+    home = tmp_path / "home"
+    home.mkdir()
+    src = tmp_path / "Загрузки"
+    src.mkdir()
+    trash = tmp_path / "bin"
+
+    monkeypatch.setattr(service_mod, "documents_dir", lambda: home)
+    monkeypatch.setattr(service_mod, "wait_stable", lambda p: True)
+    monkeypatch.setattr(service_mod, "load_rules", lambda: [_dedupe_rule()])
+
+    def fake_recycle(p: Path) -> bool:
+        trash.mkdir(exist_ok=True)
+        shutil.move(str(p), str(trash / p.name))
+        return True
+
+    monkeypatch.setattr(service_mod, "recycle", fake_recycle)
+
+    keep = src / "robloxinstaller.exe"
+    copy = src / "robloxinstaller (1).exe"
+    keep.write_bytes(CONTENT)
+    copy.write_bytes(CONTENT)
+
+    recorder = Recorder()
+    service = OrganizerService(
+        OrganizerSettings(dry_run=False),  # duplicates_confirmed по умолчанию False
+        Journal(tmp_path / "j3.jsonl"), recorder,
+    )
+    service.learned = Learned(tmp_path / "learned.json")
+    service.base = home
+
+    service.handle(copy)
+
+    assert copy.exists(), "до подтверждения файл должен остаться на месте"
+    assert keep.exists()
+    assert not trash.exists()
+    from core.i18n import t
+
+    assert any(t("notify.dedupe_confirm_title") in note for note in recorder.notes), recorder.notes
+
+
+def test_dedupe_blocked_until_confirmed(tmp_path, monkeypatch):
+    """Без подтверждения в окне предпросмотра узел работает как сухой прогон."""
+    home = tmp_path / "home"
+    home.mkdir()
+    src = tmp_path / "Загрузки"
+    src.mkdir()
+    trash = tmp_path / "bin"
+
+    monkeypatch.setattr(service_mod, "documents_dir", lambda: home)
+    monkeypatch.setattr(service_mod, "wait_stable", lambda p: True)
+    monkeypatch.setattr(service_mod, "load_rules", lambda: [_dedupe_rule()])
+
+    def fake_recycle(p: Path) -> bool:
+        trash.mkdir(exist_ok=True)
+        shutil.move(str(p), str(trash / p.name))
+        return True
+
+    monkeypatch.setattr(service_mod, "recycle", fake_recycle)
+
+    keep = src / "robloxinstaller.exe"
+    copy = src / "robloxinstaller (1).exe"
+    keep.write_bytes(CONTENT)
+    copy.write_bytes(CONTENT)
+
+    recorder = Recorder()
+    service = OrganizerService(
+        OrganizerSettings(dry_run=False),  # duplicates_confirmed по умолчанию False
+        Journal(tmp_path / "j3.jsonl"), recorder,
+    )
+    service.learned = Learned(tmp_path / "learned.json")
+    service.base = home
+
+    service.handle(copy)
+
+    assert copy.exists(), "до подтверждения файл должен остаться на месте"
+    assert keep.exists()
+    assert not trash.exists()
+    from core.i18n import t
+
+    assert any(t("notify.dedupe_confirm_title") in note for note in recorder.notes), recorder.notes

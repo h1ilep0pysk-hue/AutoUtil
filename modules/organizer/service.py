@@ -18,6 +18,7 @@ from modules.organizer.dedupe import find_duplicate
 from modules.organizer.exclusions import is_excluded
 from modules.organizer.learning import Learned
 from modules.organizer.planner import PlannedMove, plan
+from modules.organizer.quarantine import purge_quarantine
 from modules.organizer.rules import age_days
 from modules.organizer.rules_store import load_rules
 from modules.organizer.watcher import FolderWatcher, wait_stable
@@ -253,6 +254,16 @@ class OrganizerService:
             return
 
         if move.to_bin:
+            # Узел «Дубликаты» до первого подтверждения работает как сухой
+            # прогон: файл остаётся на месте, пользователь получает уведомление
+            # и открывает окно предпросмотра.
+            if move.dedupe and not self.settings.duplicates_confirmed:
+                log.info("dedupe requires confirmation, file kept: %s", move.src)
+                self.notifier.notify(Notice(
+                    title=t("notify.dedupe_confirm_title"),
+                    body=t("notify.dedupe_confirm_body", name=move.src.name, rule=move.rule),
+                ))
+                return
             self._to_bin(move.src, move.rule, dedupe=move.dedupe)
             return
 
@@ -355,6 +366,7 @@ class OrganizerService:
     def _check_due(self) -> None:
         """Запускает отложенные действия, чей срок наступил."""
         self._purge_journal()  # не чаще раза в сутки, см. last_journal_purge
+        self._purge_quarantine()  # не чаще раза в сутки, см. last_quarantine_purge
         for item in self.deferred.all_items():
             src = Path(item.src)
             if not src.exists():
@@ -396,6 +408,23 @@ class OrganizerService:
             log.info("journal purge: removed=%d retention_days=%d", removed, days)
         except Exception:
             log.exception("Ошибка очистки журнала")
+
+    def _purge_quarantine(self) -> None:
+        """Удаляет папки карантина старше 30 дней — не чаще раза в сутки."""
+        try:
+            db = self.journal.db
+            last_raw = db.get_meta("last_quarantine_purge")
+            if last_raw:
+                last = _parse_meta_ts(last_raw)
+                if last is not None:
+                    age = datetime.now(timezone.utc) - last
+                    if age < timedelta(seconds=JOURNAL_PURGE_INTERVAL_SECONDS):
+                        return
+            removed = purge_quarantine()
+            db.set_meta("last_quarantine_purge", datetime.now(timezone.utc).isoformat())
+            log.info("quarantine purge: removed=%d", removed)
+        except Exception:
+            log.exception("Ошибка очистки карантина")
 
     def _safe_cache_clean(self) -> None:
         """Раз в cache_clean_days чистит безопасные кэши и сообщает об итоге."""

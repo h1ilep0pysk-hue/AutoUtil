@@ -26,6 +26,9 @@ class OrganizerSettings(BaseModel):
     cache_clean_days: int = 30
     # Сколько дней хранить записи журнала (done/undone); см. JournalDB.purge_older_than.
     journal_retention_days: int = JOURNAL_RETENTION_DEFAULT
+    # Узел «Дубликаты» работает всерьёз только после подтверждения в окне
+    # предпросмотра (первый запуск — всегда сухой прогон).
+    duplicates_confirmed: bool = False
 
     @field_validator("journal_retention_days", mode="before")
     @classmethod

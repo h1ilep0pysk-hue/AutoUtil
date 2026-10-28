@@ -31,14 +31,13 @@ class RulePreview:
     ocr_capped: bool = False      # текстовых проверок было больше лимита
 
 
-def _match_one(rule: Rule, feats: Features, base: Path, learned: Learned) -> str | None:
+def _match_one(rule: Rule, feats: Features, base: Path, learned: Learned,
+               dup_remove: set[Path] | None = None) -> str | None:
     """Куда уйдёт файл по этому правилу: строка-папка, «Корзина» или None."""
     if rule.dedupe:
-        # Честно повторяем plan(): показываем корзину только файлам,
-        # у которых рядом есть точная копия под ту же маску.
-        from modules.organizer.dedupe import has_masked_copy
-
-        if rule.masks_match(feats) and has_masked_copy(rule, feats):
+        # Честно повторяем исполнение: показываем корзину только файлам,
+        # которые group_duplicates() отнесла к копиям (keep остаётся на месте).
+        if dup_remove and feats.path in dup_remove:
             return t("preview.dedupe_bin")
         return None
     folder = rule.match(feats)
@@ -72,6 +71,16 @@ def preview_rule(rule: Rule, folder: Path, base: Path,
     labels: dict[Path, str] = {}
     candidates: list[Path] = []
     recheck: list[Path] = []
+
+    # Дубликаты считаем один раз на папку: и предпросмотр, и исполнение
+    # должны опираться на одну и ту же группировку.
+    dup_remove: set[Path] = set()
+    if rule.dedupe:
+        from modules.organizer.dedupe_groups import group_duplicates
+
+        for group in group_duplicates(folder, rule):
+            dup_remove.update(group.remove)
+
     for p in entries:
         if not p.is_file():
             continue
@@ -80,7 +89,7 @@ def preview_rule(rule: Rule, folder: Path, base: Path,
             feats = analyze(p, need_text=False)
         except OSError:
             continue
-        hit = _match_one(rule, feats, base, learned)
+        hit = _match_one(rule, feats, base, learned, dup_remove)
         if text_required:
             if hit is None:
                 candidates.append(p)  # совпадёт, только если в тексте есть слова
@@ -101,7 +110,7 @@ def preview_rule(rule: Rule, folder: Path, base: Path,
                 feats = analyze(p, need_text=True)
             except OSError:
                 continue
-            hit = _match_one(rule, feats, base, learned)
+            hit = _match_one(rule, feats, base, learned, dup_remove)
             if hit is not None:
                 labels[p] = hit
     for p in recheck:
@@ -113,7 +122,7 @@ def preview_rule(rule: Rule, folder: Path, base: Path,
             feats = analyze(p, need_text=True)
         except OSError:
             continue
-        hit = _match_one(rule, feats, base, learned)
+        hit = _match_one(rule, feats, base, learned, dup_remove)
         if hit is None:
             labels.pop(p, None)
         else:
