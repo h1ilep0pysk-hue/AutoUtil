@@ -235,6 +235,18 @@ _STRINGS: dict[str, dict[str, str]] = {
     "settings.deferred_background": {"en": "Run deferred actions even when the app is closed", "ru": "Выполнять отложенные действия, даже когда приложение закрыто"},
     "settings.deferred_install_fail": {"en": "Failed to install scheduled task.", "ru": "Не удалось установить задачу планировщика."},
     "settings.deferred_remove_fail": {"en": "Failed to remove scheduled task.", "ru": "Не удалось удалить задачу планировщика."},
+    # настройки: срок хранения журнала и поиск
+    "settings.journal_retention_label": {"en": "Keep journal:", "ru": "Хранить журнал:"},
+    "settings.journal_retention_hint": {
+        "en": "How many days to keep journal entries. Older entries are deleted automatically (1–3650 days).",
+        "ru": "Сколько дней хранить записи журнала. Старые записи удаляются автоматически (от 1 до 3650 дней).",
+    },
+    "settings.journal_retention_suffix": {"en": " days", "ru": " дн."},
+    "settings.journal_search_hint": {"en": "Search by file name", "ru": "Поиск по имени файла"},
+    "settings.journal_next": {"en": "Next", "ru": "Далее"},
+    "settings.journal_from": {"en": "from", "ru": "с"},
+    "settings.journal_to": {"en": "to", "ru": "по"},
+    "settings.journal_empty_page": {"en": "No entries on this page.", "ru": "На этой странице записей нет."},
     "failed.page": {
         "en": "Section \"{name}\" failed to load.\n\n{err}\n\nDetails in the log: {hint}",
         "ru": "Раздел «{name}» не загрузился.\n\n{err}\n\nПодробности в логе: {hint}",

@@ -1,14 +1,15 @@
 import logging
+from datetime import datetime, timezone
 from pathlib import Path
 
-from PySide6.QtCore import QObject, QThread, Signal
+from PySide6.QtCore import QDate, QObject, QThread, QTimer, Signal
 from PySide6.QtWidgets import (
-    QCheckBox, QComboBox, QFileDialog, QFormLayout, QFrame, QHBoxLayout, QLabel, QLineEdit,
-    QListView, QListWidget, QListWidgetItem, QMessageBox, QPushButton, QSpinBox,
+    QCheckBox, QComboBox, QDateEdit, QFileDialog, QFormLayout, QFrame, QHBoxLayout, QLabel,
+    QLineEdit, QListView, QListWidget, QListWidgetItem, QMessageBox, QPushButton, QSpinBox,
     QVBoxLayout, QWidget,
 )
 
-from core.config import AppSettings
+from core.config import AppSettings, save_settings
 from core.i18n import set_language, t
 from core.journal import Journal
 from core.prefs import UiPrefs, save_prefs
@@ -44,7 +45,37 @@ class _Page(QWidget):
             self.root.addWidget(_muted(subtitle))
 
 
+def _empty_date_edit() -> QDateEdit:
+    """QDateEdit с «пустым» значением: минимальная дата означает «не задано»."""
+    edit = QDateEdit()
+    edit.setCalendarPopup(True)
+    edit.setDisplayFormat("yyyy-MM-dd")
+    edit.setMinimumDate(QDate(2000, 1, 1))
+    edit.setDate(edit.minimumDate())
+    edit.setSpecialValueText("")  # пока дата не выбрана, поле выглядит пустым
+    return edit
+
+
+def _date_start(edit: QDateEdit) -> datetime | None:
+    if edit.date() == edit.minimumDate():
+        return None
+    d = edit.date()
+    return datetime(d.year(), d.month(), d.day(), tzinfo=timezone.utc)
+
+
+def _date_end(edit: QDateEdit) -> datetime | None:
+    if edit.date() == edit.minimumDate():
+        return None
+    d = edit.date()
+    return datetime(
+        d.year(), d.month(), d.day(), 23, 59, 59, 999999, tzinfo=timezone.utc
+    )
+
+
 class JournalPage(_Page):
+    PAGE_SIZE = 200
+    SEARCH_DELAY_MS = 300
+
     def __init__(self, journal: Journal, prefs: UiPrefs) -> None:
         super().__init__(t("Журнал действий"), t("Все перемещения файлов. Можно вернуть любое."))
         self.journal = journal
@@ -52,25 +83,78 @@ class JournalPage(_Page):
         self.model = JournalModel()
         self.view = QListView()
         self.view.setModel(self.model)
+        self._offset = 0
+
+        self.search = QLineEdit()
+        self.search.setPlaceholderText(t("settings.journal_search_hint"))
+        self.search.setClearButtonEnabled(True)
+        self.date_from = _empty_date_edit()
+        self.date_to = _empty_date_edit()
+
+        self.next_btn = QPushButton(t("settings.journal_next"))
+        self.next_btn.clicked.connect(self._next_page)
+        self.next_btn.setEnabled(False)
 
         self.undo_btn = QPushButton(t("Вернуть выбранное"))
         self.undo_btn.clicked.connect(self._undo)
         self.refresh_btn = QPushButton(t("Обновить"))
         self.refresh_btn.clicked.connect(self.reload)
         self.status = _muted("")
+
+        filters = QHBoxLayout()
+        filters.addWidget(self.search, 1)
+        filters.addWidget(QLabel(t("settings.journal_from")))
+        filters.addWidget(self.date_from)
+        filters.addWidget(QLabel(t("settings.journal_to")))
+        filters.addWidget(self.date_to)
+
         bar = QHBoxLayout()
         bar.addWidget(self.undo_btn)
         bar.addWidget(self.refresh_btn)
+        bar.addWidget(self.next_btn)
         bar.addStretch()
 
+        # Фильтры применяются с задержкой: не дёргаем БД на каждую букву.
+        self._debounce = QTimer(self)
+        self._debounce.setSingleShot(True)
+        self._debounce.setInterval(self.SEARCH_DELAY_MS)
+        self._debounce.timeout.connect(self._apply_filters)
+        self.search.textChanged.connect(self._debounce.start)
+        self.date_from.dateChanged.connect(self._debounce.start)
+        self.date_to.dateChanged.connect(self._debounce.start)
+
+        self.root.addLayout(filters)
         self.root.addLayout(bar)
         self.root.addWidget(self.view, 1)
         self.root.addWidget(self.status)
         self.reload()
 
+    # --- фильтры -----------------------------------------------------------
+    def _filters(self) -> dict:
+        """Текущие фильтры в виде аргументов Journal.find_entries."""
+        name = self.search.text().strip() or None
+        since = _date_start(self.date_from)
+        until = _date_end(self.date_to)
+        return {"name": name, "since": since, "until": until}
+
+    def _apply_filters(self) -> None:
+        self._offset = 0
+        self.reload()
+
+    def _next_page(self) -> None:
+        self._offset += self.PAGE_SIZE
+        self.reload()
+
     def reload(self) -> None:
-        entries = list(reversed(self.journal.read_all()))[: self.prefs.journal_limit]
+        entries = self.journal.find_entries(
+            limit=self.PAGE_SIZE, offset=self._offset, **self._filters()
+        )
         self.model.set_items(entries)
+        self.next_btn.setEnabled(len(entries) == self.PAGE_SIZE)
+        if not entries and self._offset:
+            self.status.setText(t("settings.journal_empty_page"))
+        else:
+            self.status.setText("")
 
     def _undo(self) -> None:
         idx = self.view.currentIndex()
@@ -261,6 +345,12 @@ class SettingsPage(_Page):
         self.journal_limit.setRange(20, 2000)
         self.journal_limit.setValue(prefs.journal_limit)
 
+        self.journal_retention = QSpinBox()
+        self.journal_retention.setRange(1, 3650)
+        self.journal_retention.setValue(settings.organizer.journal_retention_days)
+        self.journal_retention.setSuffix(t("settings.journal_retention_suffix"))
+        self.journal_retention.setToolTip(t("settings.journal_retention_hint"))
+
         self.dry = QCheckBox(t("Только показывать план, без переносов"))
         self.dry.setChecked(settings.organizer.dry_run)
         # FIX: состояние автозапуска берём из реестра (источник правды),
@@ -278,6 +368,7 @@ class SettingsPage(_Page):
         form.addRow("", self.confirm)
         form.addRow(t("Открывать сначала:"), self.default_section)
         form.addRow(t("Строк в журнале:"), self.journal_limit)
+        form.addRow(t("settings.journal_retention_label"), self.journal_retention)
         form.addRow("", self.dry)
         form.addRow("", self.deferred_background)
         form.addRow(t("Не трогать папки:"), self.excluded)
@@ -348,6 +439,7 @@ class SettingsPage(_Page):
         save_prefs(self.prefs)
 
         self.settings.organizer.dry_run = self.dry.isChecked()
+        self.settings.organizer.journal_retention_days = self.journal_retention.value()
         self.settings.organizer.excluded_dirs = [s.strip() for s in self.excluded.text().split(";") if s.strip()]
         self.settings.autostart = self.autostart.isChecked()
         # FIX: результат автозапуска показываем пользователю (раньше ошибка
@@ -375,6 +467,9 @@ class SettingsPage(_Page):
 
 
         self.on_prefs_changed(self.prefs)
+        # Настройки организатора (в т.ч. срок хранения журнала) пишем в settings.toml
+        # существующим механизмом core.config.save_settings.
+        save_settings(self.settings)
         # FIX: явно сообщаем, какой режим сортировки теперь активен
         note = (t("settings.dry_note_on") if self.settings.organizer.dry_run
                 else t("settings.dry_note_off"))

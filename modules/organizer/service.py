@@ -1,5 +1,6 @@
 import logging
 import threading
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from core.config import OrganizerSettings
@@ -26,6 +27,18 @@ log = logging.getLogger("autoutil.organizer")
 
 CHECK_INTERVAL_SECONDS = 900  # планировщик просыпается раз в 15 минут
 RETRY_INTERVAL_SECONDS = 30.0  # как часто перекидываются «неустоявшиеся» файлы
+JOURNAL_PURGE_INTERVAL_SECONDS = 24 * 60 * 60  # журнал чистим не чаще раза в сутки
+
+
+def _parse_meta_ts(value: str) -> datetime | None:
+    """Разбор отметки времени из meta (ISO, возможно без зоны)."""
+    try:
+        dt = datetime.fromisoformat(value)
+    except (TypeError, ValueError):
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
 
 
 class OrganizerService:
@@ -53,6 +66,8 @@ class OrganizerService:
         self._retry_thread: threading.Thread | None = None
         # Подписка один раз, в конструкторе: restart() не должен плодить дубли.
         bus.subscribe(ModeChanged, self._on_mode_changed)
+        # Чистка журнала по сроку хранения: при старте и далее раз в сутки.
+        self._purge_journal()
 
     def start(self) -> None:
         self.watcher = FolderWatcher(self.settings.watch_dirs, self.handle)
@@ -339,6 +354,7 @@ class OrganizerService:
 
     def _check_due(self) -> None:
         """Запускает отложенные действия, чей срок наступил."""
+        self._purge_journal()  # не чаще раза в сутки, см. last_journal_purge
         for item in self.deferred.all_items():
             src = Path(item.src)
             if not src.exists():
@@ -358,6 +374,28 @@ class OrganizerService:
                 self._to_bin(src, item.rule)
             else:
                 self._move_now(src, Path(item.dst), item.rule)
+
+    def _purge_journal(self) -> None:
+        """Удаляет записи журнала старше journal_retention_days.
+
+        Только статусы done/undone (pending не трогаем). Не чаще раза в сутки:
+        отметка последней очистки хранится в meta под ключом last_journal_purge.
+        """
+        try:
+            db = self.journal.db
+            last_raw = db.get_meta("last_journal_purge")
+            if last_raw:
+                last = _parse_meta_ts(last_raw)
+                if last is not None:
+                    age = datetime.now(timezone.utc) - last
+                    if age < timedelta(seconds=JOURNAL_PURGE_INTERVAL_SECONDS):
+                        return
+            days = self.settings.journal_retention_days
+            removed = db.purge_older_than(days)
+            db.set_meta("last_journal_purge", datetime.now(timezone.utc).isoformat())
+            log.info("journal purge: removed=%d retention_days=%d", removed, days)
+        except Exception:
+            log.exception("Ошибка очистки журнала")
 
     def _safe_cache_clean(self) -> None:
         """Раз в cache_clean_days чистит безопасные кэши и сообщает об итоге."""
