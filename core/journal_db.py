@@ -22,6 +22,33 @@ JOURNAL_DB_PATH = Path(user_data_dir("AutoUtil", appauthor=False)) / "journal.sq
 # SQL schema version – bump when schema changes
 SCHEMA_VERSION = 1
 
+# Current schema of the deferred table. Legacy databases may still carry the
+# older layout with ``path TEXT NOT NULL`` and ``action`` columns instead of
+# ``src``/``rule``; _migrate_deferred_schema() upgrades them in place.
+_DEFERRED_SCHEMA_SQL = """
+            CREATE TABLE {name} (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                src TEXT NOT NULL,
+                dst TEXT,
+                rule TEXT NOT NULL,
+                days INTEGER NOT NULL,
+                ask INTEGER NOT NULL,
+                bin INTEGER NOT NULL,
+                due_ts TEXT NOT NULL,
+                status TEXT NOT NULL,
+                created_ts TEXT NOT NULL,
+                lock_owner TEXT,
+                lock_ts TEXT,
+                error TEXT
+            )
+            """
+
+# Columns of the current deferred schema (order matters for INSERT ... SELECT).
+_DEFERRED_COLUMNS = [
+    "id", "src", "dst", "rule", "days", "ask", "bin",
+    "due_ts", "status", "created_ts", "lock_owner", "lock_ts", "error",
+]
+
 
 @dataclass
 class MoveEntry:
@@ -119,25 +146,9 @@ class JournalDB:
             """
         )
         # deferred table (future version – created now for simplicity)
-        cur.execute(
-            """
-            CREATE TABLE IF NOT EXISTS deferred (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                src TEXT NOT NULL,
-                dst TEXT,
-                rule TEXT NOT NULL,
-                days INTEGER NOT NULL,
-                ask INTEGER NOT NULL,
-                bin INTEGER NOT NULL,
-                due_ts TEXT NOT NULL,
-                status TEXT NOT NULL,
-                created_ts TEXT NOT NULL,
-                lock_owner TEXT,
-                lock_ts TEXT,
-                error TEXT
-            )
-            """
-        )
+        cur.execute(_DEFERRED_SCHEMA_SQL.format(name="IF NOT EXISTS deferred"))
+        # Upgrade a legacy deferred table (with path/action columns) in place.
+        self._migrate_deferred_schema(cur)
         # Ensure new columns exist (migration from older schema with only 'path' column)
         cur.execute("PRAGMA table_info(deferred)")
         cols = {row["name"] for row in cur.fetchall()}
@@ -169,6 +180,97 @@ class JournalDB:
             )
         self.conn.commit()
         self._ensure_trashed_column()
+
+    # ---------------------------------------------------------------------
+    # Legacy deferred schema migration (path/action -> src/rule)
+    # ---------------------------------------------------------------------
+    def _migrate_deferred_schema(self, cur: sqlite3.Cursor) -> None:
+        """Rebuild the deferred table if it still has legacy columns.
+
+        Legacy databases carry ``path TEXT NOT NULL`` and ``action`` columns
+        that no longer exist in the current schema, so INSERTs fail with
+        NOT NULL constraint errors. The rebuild happens in a single
+        transaction; on any error everything is rolled back. Idempotent:
+        once the legacy columns are gone this is a no-op.
+        """
+        cur.execute("PRAGMA table_info(deferred)")
+        old_cols = {row["name"] for row in cur.fetchall()}
+        if "path" not in old_cols and "action" not in old_cols:
+            return  # already on the current schema
+        log.info("Migrating legacy deferred schema in %s", self.path)
+        cur.execute("BEGIN")
+        try:
+            cur.execute(_DEFERRED_SCHEMA_SQL.format(name="deferred_new"))
+            skipped = self._copy_deferred_rows(cur, old_cols)
+            cur.execute("DROP TABLE deferred")
+            cur.execute("ALTER TABLE deferred_new RENAME TO deferred")
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS idx_deferred_status_due "
+                "ON deferred(status, due_ts)"
+            )
+        except Exception:
+            self.conn.rollback()
+            log.exception("Legacy deferred schema migration failed, rolled back")
+            raise
+        self.conn.commit()
+        if skipped:
+            log.warning(
+                "Skipped %d deferred rows with both src and path empty", skipped
+            )
+
+    def _copy_deferred_rows(self, cur: sqlite3.Cursor, old_cols: set[str]) -> int:
+        """Copy rows from legacy ``deferred`` into ``deferred_new``.
+
+        Rows where ``src`` is empty but the legacy ``path`` is filled get
+        ``path`` promoted to ``src``. Rows with both empty are dropped and
+        counted in the return value. Isolated into a method so tests can
+        force a failure here.
+        """
+        has_src = "src" in old_cols
+        has_path = "path" in old_cols
+        select_exprs: list[str] = []
+        for col in _DEFERRED_COLUMNS:
+            if col == "src" and has_path:
+                if has_src:
+                    select_exprs.append(
+                        "CASE WHEN (src IS NULL OR src = '') AND path <> '' "
+                        "THEN path ELSE src END"
+                    )
+                else:
+                    select_exprs.append("path")
+            elif col in old_cols:
+                select_exprs.append(col)
+            elif col == "id":
+                select_exprs.append("NULL")  # let AUTOINCREMENT assign
+            elif col in {"days", "ask", "bin"}:
+                select_exprs.append("0")
+            elif col in {"dst", "lock_owner", "lock_ts", "error"}:
+                select_exprs.append("NULL")
+            else:
+                select_exprs.append("''")
+        # Rows with both src and path empty carry no useful information.
+        if has_src and has_path:
+            skip_filter = "NOT ((src IS NULL OR src = '') AND (path IS NULL OR path = ''))"
+        elif has_path:
+            skip_filter = "path IS NOT NULL AND path <> ''"
+        elif has_src:
+            skip_filter = "src IS NOT NULL AND src <> ''"
+        else:
+            skip_filter = None
+        (total,) = cur.execute("SELECT COUNT(*) FROM deferred").fetchone()
+        kept = total
+        if skip_filter:
+            (kept,) = cur.execute(
+                f"SELECT COUNT(*) FROM deferred WHERE {skip_filter}"
+            ).fetchone()
+        insert_sql = (
+            f"INSERT INTO deferred_new ({', '.join(_DEFERRED_COLUMNS)}) "
+            f"SELECT {', '.join(select_exprs)} FROM deferred"
+        )
+        if skip_filter:
+            insert_sql += f" WHERE {skip_filter}"
+        cur.execute(insert_sql)
+        return total - kept
 
     def _ensure_trashed_column(self) -> None:
         """Add 'trashed' column to moves if it does not exist (for undo tracking)."""
