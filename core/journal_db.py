@@ -502,6 +502,15 @@ class JournalDB:
         cur.execute("UPDATE moves SET trashed = ? WHERE id = ?", (trashed, move_id))
         self.conn.commit()
 
+    def set_status(self, move_id: str, status: str) -> None:
+        """Set the status of a move row (pending → done/failed).
+
+        The column is free-form TEXT, so new statuses need no migration.
+        """
+        cur = self.conn.cursor()
+        cur.execute("UPDATE moves SET status = ? WHERE id = ?", (status, move_id))
+        self.conn.commit()
+
     # ---------------------------------------------------------------------
     # Deferred actions API (SQLite based)
     # ---------------------------------------------------------------------
