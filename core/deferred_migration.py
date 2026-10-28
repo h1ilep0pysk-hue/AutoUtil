@@ -31,7 +31,8 @@ _BIN_ACTIONS = ("bin", "recycle", "trash")
 class MigrationReport:
     imported: int = 0
     skipped_malformed: int = 0
-    status: str = "no_file"  # no_file | migrated | error | kept
+    # no_file | migrated | error | kept | already_done
+    status: str = "no_file"
     reason: str = ""
 
 
@@ -142,6 +143,13 @@ def migrate_deferred_json(json_path: Path, db: Any) -> MigrationReport:
         log.info("deferred migration: no_file imported=0 skipped_malformed=0")
         return report
 
+    # One-time migration flag: if a previous run already imported the rows
+    # (even if the final rename failed), do not insert them again.
+    if db.get_meta("deferred_json_migrated") == "1":
+        report.status = "already_done"
+        log.info("deferred migration: already_done, %s left untouched", json_path)
+        return report
+
     try:
         data = json.loads(json_path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
@@ -182,13 +190,33 @@ def migrate_deferred_json(json_path: Path, db: Any) -> MigrationReport:
         return report
 
     report.imported = len(inserted_ids)
+
+    # Set the one-time flag BEFORE renaming the file. If the rename fails,
+    # the flag is already set, so the next run reports already_done and does
+    # not duplicate the rows; the file stays in place for a manual rename.
+    try:
+        db.set_meta("deferred_json_migrated", "1")
+    except Exception as exc:  # noqa: BLE001 - rollback below, then report
+        log.exception("deferred migration: set_meta failed, rolling back inserts")
+        for item_id in inserted_ids:
+            try:
+                db.remove_deferred(item_id)
+            except Exception:  # noqa: BLE001
+                log.exception("deferred migration: rollback failed for id=%s", item_id)
+        report.status = "error"
+        report.reason = f"set_meta failed: {exc}"
+        return report
+
     report.status = "migrated"
 
     try:
         _rename_to_bak(json_path)
     except OSError as exc:
-        # Rows are already in the DB. A re-run would duplicate them; see "Known limits".
-        report.reason = f"rename failed, re-run would duplicate rows: {exc}"
+        # Rows are in the DB and the flag is set: a re-run is a safe no-op.
+        # The file remains in place and can be renamed manually.
+        report.reason = (
+            f"rename failed, file kept in place (flag set, re-run is a no-op): {exc}"
+        )
         log.error("deferred migration: %s", report.reason)
 
     log.info(
