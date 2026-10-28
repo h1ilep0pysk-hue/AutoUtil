@@ -32,6 +32,14 @@ class FakeDB:
     def remove_deferred(self, item_id):
         self.rows.pop(item_id, None)
 
+    def get_meta(self, key):
+        return getattr(self, "_meta", {}).get(key)
+
+    def set_meta(self, key, value):
+        if not hasattr(self, "_meta"):
+            self._meta = {}
+        self._meta[key] = value
+
 
 def _due(hours: int = 1) -> str:
     return (datetime.now(timezone.utc) + timedelta(hours=hours)).isoformat()
