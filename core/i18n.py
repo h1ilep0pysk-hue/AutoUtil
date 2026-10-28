@@ -108,6 +108,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "en": "{name} was not sent to the Recycle Bin. Details are in the log.",
         "ru": "{name} не отправлен в корзину. Подробности в логе.",
     },
+    "notify.quarantine_title": {"en": "Moved to quarantine", "ru": "Убрано в карантин"},
     "journal.bin_row": {
         "en": "moved to Recycle Bin: {name}",
         "ru": "убрано в корзину: {name}",
@@ -200,10 +201,10 @@ _STRINGS: dict[str, dict[str, str]] = {
         "en": "Sorting {n} files that arrived while paused.",
         "ru": "Разбираю файлы, пришедшие во время паузы: {n}.",
     },
-    # узел «Дубликаты»: убрали копию, оригинал остался
+    # узел «Дубликаты»: убрали копию в карантин, оригинал остался
     "notify.dedupe_body": {
-        "en": "Duplicate {name} moved to the Recycle Bin ({rule}). The other copy stays in place.",
-        "ru": "Дубликат {name} убран в корзину ({rule}). Другая копия осталась на месте.",
+        "en": "Duplicate {name} moved to quarantine ({rule}). The other copy stays in place.",
+        "ru": "Дубликат {name} убран в карантин ({rule}). Другая копия осталась на месте.",
     },
     # настройки: что теперь делает сортировка после смены dry-run
     "settings.dry_note_on": {

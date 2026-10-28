@@ -15,11 +15,12 @@ from modules.organizer import cacheclean
 from modules.organizer.actions import apply_move, prepare_target, recycle
 from modules.organizer.analyzer import analyze
 from modules.organizer.dedupe import find_duplicate
+from modules.organizer.dedupe_groups import group_duplicates
 from modules.organizer.exclusions import is_excluded
 from modules.organizer.learning import Learned
 from modules.organizer.planner import PlannedMove, plan
-from modules.organizer.quarantine import purge_quarantine
-from modules.organizer.rules import age_days
+from modules.organizer.quarantine import move_to_quarantine, purge_quarantine
+from modules.organizer.rules import Rule, age_days
 from modules.organizer.rules_store import load_rules
 from modules.organizer.watcher import FolderWatcher, wait_stable
 from win.paths import documents_dir
@@ -211,7 +212,7 @@ class OrganizerService:
             self._schedule(move)
             return
 
-        self._execute(move)
+        self._execute(move, rules)
 
     def _schedule(self, move: PlannedMove) -> None:
         """Откладывает действие на срок из узла «Через N дней»."""
@@ -226,7 +227,7 @@ class OrganizerService:
             body=t("notify.deferred_body", name=move.src.name, days=move.delay_days, rule=move.rule),
         ))
 
-    def _execute(self, move: PlannedMove) -> None:
+    def _execute(self, move: PlannedMove, rules: list[Rule] | None = None) -> None:
         if move.ask:
             # Повторное событие на тот же файл не должно плодить записи:
             # файл либо будет перенесён, либо остановлен до добавления. FIX
@@ -254,24 +255,58 @@ class OrganizerService:
             return
 
         if move.to_bin:
-            # Узел «Дубликаты» до первого подтверждения работает как сухой
-            # прогон: файл остаётся на месте, пользователь получает уведомление
-            # и открывает окно предпросмотра.
-            if move.dedupe and not self.settings.duplicates_confirmed:
-                log.info("dedupe requires confirmation, file kept: %s", move.src)
-                self.notifier.notify(Notice(
-                    title=t("notify.dedupe_confirm_title"),
-                    body=t("notify.dedupe_confirm_body", name=move.src.name, rule=move.rule),
-                ))
+            # Узел «Дубликаты» уводит копии в карантин (не в корзину):
+            # файл можно вернуть, ничего не удаляется безвозвратно.
+            if move.dedupe:
+                self._quarantine_duplicate(move, rules)
                 return
-            self._to_bin(move.src, move.rule, dedupe=move.dedupe)
+            self._to_bin(move.src, move.rule)
             return
 
         self._move_now(move.src, move.dst, move.rule)
 
     # --- исполнение ------------------------------------------------------
 
-    def _to_bin(self, src: Path, rule: str, dedupe: bool = False) -> None:
+    def _quarantine_duplicate(self, move: PlannedMove, rules: list[Rule] | None) -> None:
+        """Дубликат уходит в карантин; keep и одиночные файлы не трогаем.
+
+        Действие выполняется над всей группой, а не только над файлом-
+        триггером: копия может прийти позже и оказаться самым свежим файлом
+        группы (тогда keep — это она, а уходить в карантин должен оригинал).
+        """
+        rule_obj = next((r for r in (rules or []) if r.name == move.rule), None)
+        if rule_obj is None:
+            log.warning("dedupe: rule %r not found, file kept: %s", move.rule, move.src)
+            return
+        groups = group_duplicates(move.src.parent, rule_obj)
+        group = next((g for g in groups if move.src == g.keep or move.src in g.remove), None)
+        if group is None:
+            log.info("dedupe: %s is not part of a duplicate group, left in place", move.src)
+            return
+        if not self.settings.duplicates_confirmed:
+            log.info("dedupe: confirmation required, nothing moved: %s", move.src)
+            self.notifier.notify(Notice(
+                title=t("notify.dedupe_confirm_title"),
+                body=t("notify.dedupe_confirm_body", name=move.src.name, rule=move.rule),
+            ))
+            return
+        pairs: list[tuple[Path, Path]] = []
+        moved = move_to_quarantine(group, self.journal, move.rule, moved_pairs=pairs)
+        if not moved:
+            log.warning("dedupe: nothing moved to quarantine for %s", move.src)
+            return
+        for src, target in pairs:
+            bus.publish(FileMoved(src=str(src), dst=str(target), rule=move.rule))
+            self.notifier.notify(Notice(
+                title=t("notify.quarantine_title"),
+                body=t("notify.dedupe_body", name=target.name, rule=move.rule),
+            ))
+        log.info(
+            "dedupe: %d file(s) moved to quarantine, kept %s (rule=%s)",
+            len(moved), group.keep.name, move.rule,
+        )
+
+    def _to_bin(self, src: Path, rule: str) -> None:
         if not recycle(src):
             log.warning("Не удалось отправить в корзину: %s", src)
             self.notifier.notify(Notice(
@@ -284,12 +319,9 @@ class OrganizerService:
         except Exception:
             log.exception("Не удалось записать в журнал отправку в корзину: %s", src)
         bus.publish(FileTrashed(src=str(src), rule=rule))
-        # Дубликат: текст похож, но объясняет, что одна копия осталась на месте.
-        body = (t("notify.dedupe_body", name=src.name, rule=rule) if dedupe
-                else t("notify.bin_body", name=src.name, rule=rule))
         self.notifier.notify(Notice(
             title=t("notify.bin_title"),
-            body=body,
+            body=t("notify.bin_body", name=src.name, rule=rule),
         ))
         log.info("Убрано в корзину: %s (правило: %s)", src, rule)
 

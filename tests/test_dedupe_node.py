@@ -1,15 +1,21 @@
 """Узел схемы «Дубликаты»: чистит копии файла, оставляет одну.
 
 Пример пользователя: маска robloxinstaller* + расширение exe — из кучки
-таких же инсталляторов остаётся ровно один, остальное в корзину (и оттуда
-его можно вернуть из журнала).
+таких же инсталляторов остаётся ровно один, остальные уходят в карантин
+(оттуда их можно вернуть из журнала).
+
+Этап 3г: автоматический путь узла больше не использует корзину — копии
+переносятся в карантин, поэтому проверки «файл в корзине» заменены на
+«файл в карантине».
 """
+import os
 import shutil
 from pathlib import Path
 
 import pytest
 
 import modules.organizer.service as service_mod
+from core import config
 from core.config import OrganizerSettings
 from core.journal import Journal
 from core.schema import Edge, Node, Schema
@@ -21,6 +27,16 @@ from modules.organizer.rules import Rule
 from modules.organizer.service import OrganizerService
 
 CONTENT = b"roblox installer payload"
+
+
+def _quarantine_files() -> list[Path]:
+    """Файлы, реально попавшие в карантин: <APP_DIR>/quarantine/<дата>/*."""
+    root = config.APP_DIR / "quarantine"
+    if not root.is_dir():
+        return []
+    return sorted(
+        p for folder in root.iterdir() if folder.is_dir() for p in folder.iterdir()
+    )
 
 
 class Recorder:
@@ -241,20 +257,31 @@ def test_service_cleans_copies_leaves_one(env):
     assert len(leftover) == 1
     assert leftover[0].read_bytes() == CONTENT
 
-    # остальные две копии — в корзине
-    binned = sorted(p.name for p in env["trash"].iterdir())
-    assert len(binned) == 2
-    assert all("robloxinstaller" in n for n in binned)
-    for name in ("robloxinstaller (1).exe", "robloxinstaller (2).exe"):
-        assert name in binned
+    # остальные две копии — в карантине, а не в корзине
+    held = _quarantine_files()
+    assert len(held) == 2, held
+    # какая именно копия осталась — решает выбор keep (свежесть mtime),
+    # поэтому проверяем состав: три копии = один leftover + два в карантине
+    assert {p.name for p in held} | {leftover[0].name} == {
+        "robloxinstaller.exe", "robloxinstaller (1).exe", "robloxinstaller (2).exe",
+    }
+    assert not env["trash"].exists(), "корзина в этом сценарии не используется"
 
     # постороннее не тронуто
     assert other.exists()
     assert (src / "заметка.txt").exists()
 
-    # журнал: две записи «в корзину» с правилом дубликатов — восстановимо
-    bins = [e for e in env["service"].journal.read_all() if e.kind == "bin"]
-    assert len(bins) == 2 and all(b.rule == "Дубликаты" for b in bins)
+    # журнал: две записи о переносе в карантин — восстановимо через undo
+    rows = env["service"].journal.db.find_moves()
+    assert len(rows) == 2
+    quarantine_root = config.APP_DIR / "quarantine"
+    for row in rows:
+        assert row.action == "move"
+        assert row.status == "done"
+        assert row.rule_id == "Дубликаты"
+        dst = Path(row.dst)
+        assert dst.exists(), f"{dst} должен лежать в карантине"
+        assert dst.is_relative_to(quarantine_root)
 
     # уведомление объясняет, что копия осталась
     dedup_notes = [n for n in env["recorder"].notes if "Дубликат" in n]
@@ -278,24 +305,34 @@ def test_service_auto_mode_cleans_copies(env, tmp_path, monkeypatch):
     leftover = [p for p in src.iterdir()
                 if p.name.startswith("setup game")]
     assert len(leftover) == 1
-    binned = sorted(p.name for p in env["trash"].iterdir() if "setup game" in p.name)
-    assert len(binned) == 2
+    held = [p.name for p in _quarantine_files() if "setup game" in p.name]
+    assert len(held) == 2, held
+    assert not env["trash"].exists(), "корзина в этом сценарии не используется"
     assert unique.exists()  # чужое имя не приплели: не дубль
 
 
 def test_service_catches_duplicate_arriving_later(env):
+    """Копия, пришедшая позже, попадает в группу и уводит лишнее в карантин.
+
+    keep выбирается по свежести mtime, поэтому позже пришедшая копия —
+    самый свежий файл группы: остаётся она, а в карантин уходит оригинал.
+    """
     src: Path = env["src"]
     first = env["make"]("robloxinstaller.exe")
+    os.utime(first, (1_000_000, 1_000_000))
     env["service"].handle(first)
     assert first.exists()  # копий нет — файл остался
+    assert _quarantine_files() == []
 
     late = src / "robloxinstaller (копия).exe"
     late.write_bytes(CONTENT)
+    os.utime(late, (2_000_000, 2_000_000))  # заведомо свежее оригинала
     env["service"].handle(late)
 
-    assert not late.exists()
-    assert first.exists()  # оригинал на месте
-    assert any("robloxinstaller (копия).exe" == p.name for p in env["trash"].iterdir())
+    assert late.exists(), "самый свежий файл группы остаётся на месте"
+    assert not first.exists(), "устаревший оригинал уходит в карантин"
+    assert [p.name for p in _quarantine_files()] == ["robloxinstaller.exe"]
+    assert not env["trash"].exists()
 
 
 def test_dry_run_only_notifies(env, tmp_path, monkeypatch):
@@ -316,6 +353,8 @@ def test_dry_run_only_notifies(env, tmp_path, monkeypatch):
     # файлы на месте — это только план
     assert a.exists() and b.exists()
     assert recorder2.notes  # уведомления-планы приходят
+    assert _quarantine_files() == [], "в режиме плана карантин не используется"
+    assert svc.journal.read_all() == [], "в режиме плана журнал не пополняется"
 
 
 def test_dedupe_blocked_until_confirmed(tmp_path, monkeypatch):
@@ -358,45 +397,4 @@ def test_dedupe_blocked_until_confirmed(tmp_path, monkeypatch):
     from core.i18n import t
 
     assert any(t("notify.dedupe_confirm_title") in note for note in recorder.notes), recorder.notes
-
-
-def test_dedupe_blocked_until_confirmed(tmp_path, monkeypatch):
-    """Без подтверждения в окне предпросмотра узел работает как сухой прогон."""
-    home = tmp_path / "home"
-    home.mkdir()
-    src = tmp_path / "Загрузки"
-    src.mkdir()
-    trash = tmp_path / "bin"
-
-    monkeypatch.setattr(service_mod, "documents_dir", lambda: home)
-    monkeypatch.setattr(service_mod, "wait_stable", lambda p: True)
-    monkeypatch.setattr(service_mod, "load_rules", lambda: [_dedupe_rule()])
-
-    def fake_recycle(p: Path) -> bool:
-        trash.mkdir(exist_ok=True)
-        shutil.move(str(p), str(trash / p.name))
-        return True
-
-    monkeypatch.setattr(service_mod, "recycle", fake_recycle)
-
-    keep = src / "robloxinstaller.exe"
-    copy = src / "robloxinstaller (1).exe"
-    keep.write_bytes(CONTENT)
-    copy.write_bytes(CONTENT)
-
-    recorder = Recorder()
-    service = OrganizerService(
-        OrganizerSettings(dry_run=False),  # duplicates_confirmed по умолчанию False
-        Journal(tmp_path / "j3.jsonl"), recorder,
-    )
-    service.learned = Learned(tmp_path / "learned.json")
-    service.base = home
-
-    service.handle(copy)
-
-    assert copy.exists(), "до подтверждения файл должен остаться на месте"
-    assert keep.exists()
-    assert not trash.exists()
-    from core.i18n import t
-
-    assert any(t("notify.dedupe_confirm_title") in note for note in recorder.notes), recorder.notes
+    assert _quarantine_files() == [], "до подтверждения карантин не используется"

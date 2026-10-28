@@ -48,8 +48,19 @@ def _as_db(journal):
     return getattr(journal, "db", journal)
 
 
-def move_to_quarantine(group: DupGroup, journal, rule_name: str) -> list[Path]:
-    """Move ``group.remove`` into quarantine; return the new paths."""
+def move_to_quarantine(
+    group: DupGroup,
+    journal,
+    rule_name: str,
+    moved_pairs: list[tuple[Path, Path]] | None = None,
+) -> list[Path]:
+    """Move ``group.remove`` into quarantine; return the new paths.
+
+    ``moved_pairs``, when given, is filled with ``(original, target)`` for
+    every file actually moved — callers need the original path for events
+    and notifications (the file that triggered the rule is not necessarily
+    one of the moved ones: it may be the kept copy).
+    """
     db = _as_db(journal)
     base = quarantine_dir()
     moved: list[Path] = []
@@ -92,6 +103,8 @@ def move_to_quarantine(group: DupGroup, journal, rule_name: str) -> list[Path]:
             log.exception("quarantine: could not mark %s done, stays pending", move_id)
             continue
         moved.append(target)
+        if moved_pairs is not None:
+            moved_pairs.append((src, target))
     return moved
 
 
