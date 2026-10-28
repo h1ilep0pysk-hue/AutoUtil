@@ -1,16 +1,17 @@
 """Grouping of duplicate files for the «Дубликаты» node.
 
 One place decides which copies are duplicates and which one stays. The
-preview window and the execution path both call :func:`group_duplicates`,
-so what the user sees is exactly what will be moved.
+planner, the preview window and the execution path all call
+:func:`group_duplicates`, so what the user sees is exactly what will happen.
 
-Candidate selection repeats ``dedupe.has_masked_copy``:
+Candidate selection:
 - with a name mask — the rule's own conditions (``masks_match``);
-- in auto mode (no mask) — same extension (plus the node's ``exts``) and a
-  "similar" name, approximated by the normalized stem used by dedupe.py.
+- in auto mode (no mask) — the node's ``exts`` and a "similar" name,
+  approximated by the normalized stem from ``dedupe.py``.
 
-Grouping key is ``(size, sha256)``; in auto mode the normalized stem is part
-of the key so unrelated files with identical bytes never form a group.
+Grouping key is ``(size, sha256)``; in auto mode the extension and the
+normalized stem are part of the key so unrelated files with identical bytes
+never form a group.
 """
 from __future__ import annotations
 
@@ -81,7 +82,10 @@ def group_duplicates(folder: Path, rule: Rule) -> list[DupGroup]:
         feats = _candidate(path, rule, auto)
         if feats is None:
             continue
-        key = (feats.size, _norm_stem(path.stem)) if auto else (feats.size,)
+        # Auto mode groups only files with the same extension: the node treats
+        # «installer.exe» and «installer.zip» with identical bytes as different
+        # files (pinned by test_auto_requires_same_extension).
+        key = (feats.size, feats.ext, _norm_stem(path.stem)) if auto else (feats.size,)
         buckets.setdefault(key, []).append(path)
 
     hashes: dict[Path, str] = {}

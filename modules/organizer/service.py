@@ -275,11 +275,15 @@ class OrganizerService:
         группы (тогда keep — это она, а уходить в карантин должен оригинал).
         """
         rule_obj = next((r for r in (rules or []) if r.name == move.rule), None)
-        if rule_obj is None:
+        if rule_obj is None and move.dedupe_group is None:
             log.warning("dedupe: rule %r not found, file kept: %s", move.rule, move.src)
             return
-        groups = group_duplicates(move.src.parent, rule_obj)
-        group = next((g for g in groups if move.src == g.keep or move.src in g.remove), None)
+        # План уже посчитал группу тем же group_duplicates — берём её как есть.
+        # Пересчёт нужен только если PlannedMove собран вручную (dedupe_group=None).
+        group = move.dedupe_group
+        if group is None:
+            groups = group_duplicates(move.src.parent, rule_obj)
+            group = next((g for g in groups if move.src == g.keep or move.src in g.remove), None)
         if group is None:
             log.info("dedupe: %s is not part of a duplicate group, left in place", move.src)
             return
