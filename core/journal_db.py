@@ -328,16 +328,14 @@ class JournalDB:
             due = (created_dt + timedelta(days=days)).isoformat()
         cur = self.conn.cursor()
         cur.execute(
-            "INSERT INTO deferred (path, src, dst, rule, days, ask, bin, action, due_ts, status, created_ts) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO deferred (src, dst, rule, days, ask, bin, due_ts, status, created_ts) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
-                "",
                 src,
                 dst,
                 rule,
                 days,
                 int(ask),
                 int(bin),
-                "",
                 due,
                 status,
                 created,
