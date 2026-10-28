@@ -7,16 +7,14 @@ and respects inter‑process locking.
 
 import logging
 import os
-import sys
 from dataclasses import dataclass
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from pathlib import Path
 
 import msvcrt
 
 from core.journal_db import JournalDB
 from modules.organizer.actions import recycle, apply_move, prepare_target
-from modules.organizer.rules import age_days
 from core.journal import Journal
 
 log = logging.getLogger("autoutil.deferred_runner")

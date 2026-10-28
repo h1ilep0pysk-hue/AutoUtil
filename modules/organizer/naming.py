@@ -1,6 +1,5 @@
 import re
 from datetime import datetime
-from pathlib import Path
 
 from core.i18n import t
 from modules.organizer.analyzer import Features

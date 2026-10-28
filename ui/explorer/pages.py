@@ -1,14 +1,14 @@
 import logging
 from pathlib import Path
 
-from PySide6.QtCore import QObject, QThread, Qt, Signal
+from PySide6.QtCore import QObject, QThread, Signal
 from PySide6.QtWidgets import (
     QCheckBox, QComboBox, QFileDialog, QFormLayout, QFrame, QHBoxLayout, QLabel, QLineEdit,
     QListView, QListWidget, QListWidgetItem, QMessageBox, QPushButton, QSpinBox,
     QVBoxLayout, QWidget,
 )
 
-from core.config import AppSettings, save_settings
+from core.config import AppSettings
 from core.i18n import set_language, t
 from core.journal import Journal
 from core.prefs import UiPrefs, save_prefs

@@ -3,12 +3,11 @@ SQLite‑based journal implementation.
 Replaces the legacy JSONL journal.
 """
 
-import json
 import logging
 import shutil
 import sqlite3
 import weakref
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any, Iterable, List, Optional

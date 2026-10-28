@@ -5,7 +5,6 @@ the ``deferred`` table in ``journal.sqlite`` via :class:`core.journal_db.Journal
 """
 
 import threading
-from datetime import datetime, timezone
 from typing import List, Optional
 
 from core.config import APP_DIR
