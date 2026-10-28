@@ -17,7 +17,7 @@ from ui.explorer.theme import apply_qss
 
 log = logging.getLogger("autoutil.ui")
 
-LOG_HINT = "%APPDATA%\\AutoUtil\\logs\\autoutil.log"
+LOG_HINT = "%LOCALAPPDATA%\\AutoUtil\\logs\\autoutil.log"
 
 
 def _failed_page(name: str, err: Exception) -> QWidget:

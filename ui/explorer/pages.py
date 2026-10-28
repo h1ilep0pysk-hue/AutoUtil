@@ -17,6 +17,7 @@ from modules.organizer.rules import Rule
 from modules.organizer.rules_store import load_rules, save_rules
 from ui.explorer.models import JournalModel, RuleModel
 from win import scheduler
+from win.autostart import autostart_enabled, set_autostart
 
 
 def _title(text: str) -> QLabel:
@@ -353,7 +354,7 @@ class SettingsPage(_Page):
         # FIX: результат автозапуска показываем пользователю (раньше ошибка
         # терялась и настройка «не работала» молча).
         if not set_autostart(self.settings.autostart):
-            hint = "%APPDATA%\\AutoUtil\\logs\\autoutil.log"
+            hint = "%LOCALAPPDATA%\\AutoUtil\\logs\\autoutil.log"
             self.error.setText(t("settings.autostart.fail", hint=hint))
         else:
             self.autostart_status.setText(

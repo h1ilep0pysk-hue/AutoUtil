@@ -230,6 +230,7 @@ _STRINGS: dict[str, dict[str, str]] = {
     "settings.language_applied": {"en": "Language: {lang}", "ru": "Язык: {lang}"},
     # настройки: автозапуск
     "settings.autostart.on": {"en": "Autostart is currently ON (Windows launch)", "ru": "Автозапуск включён (запуск с Windows)"},
+    "settings.autostart.off": {"en": "Autostart is currently OFF", "ru": "Автозапуск выключен"},
     "settings.autostart.fail": {"en": "Could not change autostart — details in the log: {hint}", "ru": "Не удалось изменить автозапуск — подробности в логе: {hint}"},
     "settings.deferred_background": {"en": "Run deferred actions even when the app is closed", "ru": "Выполнять отложенные действия, даже когда приложение закрыто"},
     "settings.deferred_install_fail": {"en": "Failed to install scheduled task.", "ru": "Не удалось установить задачу планировщика."},
