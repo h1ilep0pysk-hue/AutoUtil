@@ -95,6 +95,54 @@ def test_keep_still_valid_detects_change(tmp_path):
     assert keep_still_valid(group) is False
 
 
+def test_auto_mode_does_not_group_across_extensions(tmp_path):
+    """Авто-режим не склеивает одинаковые байты с разными расширениями.
+
+    То же правило, что проверяет планировщик в
+    test_auto_requires_same_extension: «installer.exe» и «installer.zip» с
+    идентичным содержимым — разные файлы. Здесь оно закреплено на стороне
+    исполнения, иначе group_duplicates увела бы в карантин чужой файл.
+    """
+    auto = Rule(name="Дубликаты", dedupe=True)
+    a = _make(tmp_path, "installer.exe")
+    z = _make(tmp_path, "installer (1).zip")
+    _make(tmp_path, "installer (2).exe")  # настоящая копия
+
+    groups = group_duplicates(tmp_path, auto)
+
+    assert len(groups) == 1
+    assert z not in groups[0].remove
+    assert a in groups[0].remove or a == groups[0].keep
+
+
+def test_planner_and_grouping_agree(tmp_path):
+    """План и исполнение опираются на одну и ту же группировку.
+
+    Раньше планировщик искал копии сам (has_masked_copy: имена сравнивались
+    по подобию строк) и мог объявить дублем файл, которого group_duplicates
+    не видит. Сервис тогда пересчитывал группу, не находил её и писал в лог
+    «nothing moved», хотя план обещал действие.
+    """
+    from modules.organizer.analyzer import analyze
+    from modules.organizer.learning import Learned
+    from modules.organizer.planner import plan
+
+    auto = Rule(name="Дубликаты", dedupe=True)
+    # похожие имена, но разные нормализованные стемы — не одна группа
+    lone = _make(tmp_path, "abcdefgh1.exe")
+    _make(tmp_path, "abcdefgh2.exe")
+    # настоящая пара копий
+    paired = _make(tmp_path, "installer.exe")
+    _make(tmp_path, "installer (1).exe")
+
+    groups = group_duplicates(tmp_path, auto)
+    in_group = {p for g in groups for p in [g.keep, *g.remove]}
+
+    for path in (lone, paired):
+        planned = plan(analyze(path), [auto], tmp_path, Learned()) is not None
+        assert planned == (path in in_group), f"план разошёлся с группой: {path.name}"
+
+
 def test_preview_and_execution_agree(tmp_path):
     """Предпросмотр помечает ровно те файлы, которые получит исполнение."""
     for name in ("dupa.txt", "dupb.txt", "dupc.txt"):
