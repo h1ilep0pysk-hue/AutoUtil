@@ -1,8 +1,6 @@
-from core.i18n import t
+from core.i18n import LANGUAGES, t
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QDialog, QHBoxLayout, QLabel, QPushButton, QVBoxLayout
-
-from core.i18n import LANGUAGES, t
 
 
 class LanguageDialog(QDialog):

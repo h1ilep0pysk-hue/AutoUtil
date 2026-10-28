@@ -107,7 +107,6 @@ class _PreviewWorker(QObject):
         try:
             result = preview_rule(self.rule, Path(self.folder), documents_dir().parent)
         except Exception:
-            import logging
             logging.getLogger("autoutil.ui").exception("Ошибка предпросмотра правила")
             result = RulePreview()
         self.done.emit(result)
