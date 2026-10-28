@@ -40,6 +40,20 @@ class JournalEntry:
 _FIELDS = {f.name for f in fields(JournalEntry)}
 
 
+def _to_entry(move) -> JournalEntry:
+    """Convert a JournalDB MoveEntry row into the legacy JournalEntry shape."""
+    return JournalEntry(
+        id=move.id,
+        timestamp=move.ts,
+        kind=move.action,
+        src=move.src,
+        dst=move.dst or "",
+        rule=move.rule_id,
+        undone=(move.status == "undone"),
+        trashed=move.trashed if hasattr(move, "trashed") else "",
+    )
+
+
 def _unique_beside(path: Path) -> Path:
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     candidate = path.with_name(f"{path.stem} ({t('journal.old_copy', stamp=stamp)}){path.suffix}")
@@ -194,23 +208,33 @@ class Journal:
         """Return all journal entries from the SQLite store, converted to the legacy format."""
         with self._lock:
             moves = self._db.find_moves(limit=1000000)
-            entries: list[JournalEntry] = []
-            for m in moves:
-                entries.append(
-                    JournalEntry(
-                        id=m.id,
-                        timestamp=m.ts,
-                        kind=m.action,
-                        src=m.src,
-                        dst=m.dst or "",
-                        rule=m.rule_id,
-                        undone=(m.status == "undone"),
-                        trashed=m.trashed if hasattr(m, "trashed") else "",
-                    )
-                )
+            entries = [_to_entry(m) for m in moves]
             # sort chronologically
             entries.sort(key=lambda e: e.timestamp)
             return entries
+
+    @property
+    def db(self) -> JournalDB:
+        """Underlying SQLite store (search, retention, meta flags)."""
+        return self._db
+
+    def find_entries(
+        self,
+        name: str | None = None,
+        since: datetime | None = None,
+        until: datetime | None = None,
+        limit: int = 200,
+        offset: int = 0,
+    ) -> list[JournalEntry]:
+        """Paged search over the journal without loading the whole table.
+
+        Delegates to :meth:`JournalDB.find_moves`; results are newest first.
+        """
+        with self._lock:
+            moves = self._db.find_moves(
+                name=name, since=since, until=until, limit=limit, offset=offset
+            )
+            return [_to_entry(m) for m in moves]
 
 
     def record_move(self, src: Path, dst: Path, rule: str) -> JournalEntry:

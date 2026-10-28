@@ -83,6 +83,19 @@ class MoveEntry:
         )
 
 
+def _parse_ts(value: Any) -> datetime | None:
+    """Parse an ISO timestamp into an aware UTC datetime, or None."""
+    if not isinstance(value, str) or not value.strip():
+        return None
+    try:
+        dt = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
 def _backup_before_migration(db_path: Path) -> Path | None:
     """Copy the database file before a deferred schema migration.
 
@@ -174,6 +187,12 @@ class JournalDB:
         # Enable WAL for concurrency
         cur.execute("PRAGMA journal_mode=WAL")
         cur.execute("PRAGMA foreign_keys=ON")
+        # SQLite LOWER()/LIKE are ASCII-only, so "Отчёт" and "отчёт" never match.
+        # A Python-side casefold keeps search case-insensitive for Cyrillic too.
+        self.conn.create_function(
+            "py_lower", 1, lambda s: s.casefold() if isinstance(s, str) else s,
+            deterministic=True,
+        )
         # meta table for schema version
         cur.execute(
             """
@@ -586,8 +605,8 @@ class JournalDB:
         clauses: List[str] = []
         params: List[Any] = []
         if name:
-            clauses.append("LOWER(src) LIKE ?")
-            params.append(f"%{name.lower()}%")
+            clauses.append("py_lower(src) LIKE ?")
+            params.append(f"%{name.casefold()}%")
         if since:
             clauses.append("ts >= ?")
             params.append(since.isoformat())
@@ -620,5 +639,30 @@ class JournalDB:
     # ---------------------------------------------------------------------
     # Clean‑up helpers
     # ---------------------------------------------------------------------
+    def purge_older_than(self, days: int) -> int:
+        """Delete finished moves older than *days* and return the row count.
+
+        Only rows with status ``done`` or ``undone`` are removed. ``pending``
+        rows are never touched. Timestamps are compared as datetimes (not as
+        strings) because legacy rows may carry different ISO variants; rows
+        whose timestamp cannot be parsed are kept and logged.
+        """
+        cutoff = datetime.now(timezone.utc) - timedelta(days=max(int(days), 0))
+        cur = self.conn.cursor()
+        cur.execute("SELECT id, ts FROM moves WHERE status IN ('done', 'undone')")
+        stale: List[str] = []
+        for row in cur.fetchall():
+            ts = _parse_ts(row["ts"])
+            if ts is None:
+                log.warning("journal purge: unparseable ts for move %s, kept", row["id"])
+                continue
+            if ts < cutoff:
+                stale.append(row["id"])
+        if not stale:
+            return 0
+        cur.executemany("DELETE FROM moves WHERE id = ?", [(i,) for i in stale])
+        self.conn.commit()
+        return len(stale)
+
     def close(self) -> None:
         self.conn.close()
