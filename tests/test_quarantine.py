@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from core import config
+from core.journal import Journal
 from core.journal_db import JournalDB
 from modules.organizer.dedupe_groups import group_duplicates
 from modules.organizer.quarantine import (
@@ -127,3 +128,36 @@ def test_purge_by_date_folder():
     assert removed == 1
     assert not old.exists()
     assert fresh.exists()
+
+
+def test_undo_quarantine_restores_file(tmp_path):
+    """Запись карантина откатывается журналом: файл возвращается на место."""
+    src = tmp_path / "src"
+    src.mkdir()
+    for name, mtime in (("dupa.txt", 1_000_000), ("dupb.txt", 2_000_000)):
+        _make(src, name, mtime=mtime)
+    group = group_duplicates(src, _rule())[0]
+    removed = group.remove[0]
+
+    journal = Journal(tmp_path / "journal.jsonl")
+    moved = move_to_quarantine(group, journal, "Дубликаты")
+
+    assert len(moved) == 1
+    target = moved[0]
+    assert not removed.exists()
+    assert target.exists()
+    assert target.read_bytes() == CONTENT
+
+    rows = journal.db.find_moves()
+    assert [r.status for r in rows] == ["done"]
+
+    # откат: файл возвращается из карантина на исходный путь
+    assert journal.undo(rows[0].id) is True
+
+    assert removed.exists(), "файл должен вернуться на исходный путь"
+    assert removed.read_bytes() == CONTENT
+    assert not target.exists(), "в карантине файла больше нет"
+    assert journal.db.get_move(rows[0].id).status == "undone"
+
+    entry = next(e for e in journal.read_all() if e.id == rows[0].id)
+    assert entry.undone is True
