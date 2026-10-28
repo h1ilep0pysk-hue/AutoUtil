@@ -51,7 +51,10 @@ class ExplorerWindow(QMainWindow):
     def _build_ui(self) -> None:
         """Собрать страницы/сайдбар/стек; вызывается и при смене языка."""
         factories = {
-            "schema": lambda: SchemaPage(on_apply=self._on_schema_applied, on_run=self.on_run_schema),
+            "schema": lambda: SchemaPage(
+                on_apply=self._on_schema_applied, on_run=self.on_run_schema,
+                settings=self.settings, journal=self.journal,
+            ),
             "pending": lambda: PendingPage(self.journal),
             "journal": lambda: JournalPage(self.journal, self.prefs),
             "report": lambda: ReportPage(self.journal),

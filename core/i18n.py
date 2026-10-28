@@ -247,6 +247,40 @@ _STRINGS: dict[str, dict[str, str]] = {
     "settings.journal_from": {"en": "from", "ru": "с"},
     "settings.journal_to": {"en": "to", "ru": "по"},
     "settings.journal_empty_page": {"en": "No entries on this page.", "ru": "На этой странице записей нет."},
+    # дубликаты: окно предпросмотра и подтверждение
+    "dup.preview.title": {"en": "Duplicates: preview", "ru": "Дубликаты: предпросмотр"},
+    "dup.preview.file": {"en": "File", "ru": "Файл"},
+    "dup.preview.size": {"en": "Size", "ru": "Размер"},
+    "dup.preview.mtime": {"en": "Modified", "ru": "Дата изменения"},
+    "dup.preview.action": {"en": "Action", "ru": "Действие"},
+    "dup.preview.action_keep": {"en": "keep", "ru": "оставить"},
+    "dup.preview.action_quarantine": {"en": "to quarantine", "ru": "в карантин"},
+    "dup.preview.group": {"en": "Group {digest} · {count} file(s)", "ru": "Группа {digest} · файлов: {count}"},
+    "dup.preview.summary": {
+        "en": "Will be moved to quarantine: {n} files, {size} MB",
+        "ru": "Будет перемещено в карантин: {n} файлов, {size} МБ",
+    },
+    "dup.preview.export": {"en": "Export to CSV", "ru": "Экспорт в CSV"},
+    "dup.preview.confirm": {
+        "en": "I understand the duplicates will be moved to quarantine",
+        "ru": "Понимаю, что дубликаты будут перемещены в карантин",
+    },
+    "dup.preview.run": {"en": "Run", "ru": "Выполнить"},
+    "dup.preview.mb": {"en": "MB", "ru": "МБ"},
+    "dup.preview.button": {"en": "Duplicates preview…", "ru": "Дубликаты: предпросмотр…"},
+    "dup.preview.button_tip": {
+        "en": "Shows duplicate groups before anything is moved",
+        "ru": "Показывает группы дубликатов до перемещения",
+    },
+    "dup.preview.empty": {"en": "No duplicates found.", "ru": "Дубликатов не найдено."},
+    "notify.dedupe_confirm_title": {
+        "en": "Duplicates: confirmation required",
+        "ru": "Дубликаты: нужно подтверждение",
+    },
+    "notify.dedupe_confirm_body": {
+        "en": "“{name}” looks like a copy. Open the duplicates preview and confirm the action.",
+        "ru": "«{name}» похож на копию. Открой предпросмотр дубликатов и подтверди действие.",
+    },
     "failed.page": {
         "en": "Section \"{name}\" failed to load.\n\n{err}\n\nDetails in the log: {hint}",
         "ru": "Раздел «{name}» не загрузился.\n\n{err}\n\nПодробности в логе: {hint}",

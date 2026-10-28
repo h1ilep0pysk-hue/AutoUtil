@@ -337,10 +337,13 @@ def _exts(text: str) -> list[str]:
 
 class SchemaPage(QWidget):
     def __init__(self, on_apply: Callable[[list[Rule], list[str]], None] | None = None,
-                 on_run: Callable[[list[str]], None] | None = None) -> None:
+                 on_run: Callable[[list[str]], None] | None = None,
+                 settings=None, journal=None) -> None:
         super().__init__()
         self.on_apply = on_apply
         self.on_run = on_run
+        self.settings = settings
+        self.journal = journal
         self.schema: Schema = load_schema()
         self.scene = QGraphicsScene(-3000, -3000, 6000, 6000)
         self.view = SchemaView(self.scene, self)
@@ -433,6 +436,10 @@ class SchemaPage(QWidget):
         footer.addSpacing(12)
         footer.addWidget(self._btn(t("flow.open"), "", self._preview_flow,
                                    t("flow.open_tip")),
+                         0, Qt.AlignmentFlag.AlignVCenter)
+        footer.addSpacing(8)
+        footer.addWidget(self._btn(t("dup.preview.button"), "", self._preview_duplicates,
+                                   t("dup.preview.button_tip")),
                          0, Qt.AlignmentFlag.AlignVCenter)
         footer.addSpacing(8)
         footer.addWidget(self._btn(t("Только правила"), "", self._apply,
@@ -650,6 +657,33 @@ class SchemaPage(QWidget):
             dialog.exec()
         except Exception:
             logging.getLogger("autoutil.ui").exception("Не удалось открыть предпросмотр сортировки")
+            self._say(t("flow.open_fail"))
+
+    def _preview_duplicates(self) -> None:
+        """Сухой прогон узла «Дубликаты»: группы копий и подтверждение."""
+        self._save()
+        rules = [r for r in self.schema.to_rules() if r.dedupe]
+        folders = self.schema.source_folders()
+        folder = next((Path(f) for f in folders if Path(f).is_dir()), None)
+        if not rules or folder is None:
+            self._say(t("dup.preview.empty"))
+            return
+        from modules.organizer.dedupe_groups import group_duplicates
+        from ui.explorer.duplicates_preview import DuplicatesPreviewDialog
+
+        rule = rules[0]
+        groups = group_duplicates(folder, rule)
+        if not groups:
+            self._say(t("dup.preview.empty"))
+            return
+        try:
+            dialog = DuplicatesPreviewDialog(
+                groups, rule.name, settings=self.settings,
+                journal=self.journal, parent=self,
+            )
+            dialog.exec()
+        except Exception:
+            logging.getLogger("autoutil.ui").exception("Не удалось открыть предпросмотр дубликатов")
             self._say(t("flow.open_fail"))
 
     def _apply(self) -> None:
