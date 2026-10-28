@@ -1,0 +1,35 @@
+# Единая политика переводов строк.
+#
+# В репозитории текст всегда хранится с LF, рабочая копия получает переводы
+# строк платформы (CRLF на Windows). Без этого файла ветки разъезжаются:
+# часть файлов лежит в репозитории с CRLF, часть с LF, и diff показывает
+# изменения во всём файле, хотя содержимое не менялось.
+* text=auto
+
+# Исходники и текст — всегда текст, а не «бинарник по догадке».
+*.py           text
+*.md           text
+*.txt          text
+*.toml         text
+*.json         text
+*.spec         text
+*.ps1          text
+*.bat          text
+*.cmd          text
+*.yml          text
+*.yaml         text
+*.cfg          text
+*.ini          text
+LICENSE        text
+.gitignore     text
+.gitattributes text
+
+# Бинарные файлы: git не должен ни нормализовать, ни сливать их.
+*.png    binary
+*.ico    binary
+*.icns   binary
+*.exe    binary
+*.dll    binary
+*.pyd    binary
+*.sqlite binary
+*.zip    binary
